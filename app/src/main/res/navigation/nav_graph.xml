@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/feedFragment">
+
+    <fragment
+        android:id="@+id/feedFragment"
+        android:name="com.sharebite.fragments.FeedFragment"
+        android:label="Feed"/>
+
+    <fragment
+        android:id="@+id/mapFragment"
+        android:name="com.sharebite.fragments.MapFragment"
+        android:label="Map"/>
+
+    <fragment
+        android:id="@+id/shareFragment"
+        android:name="com.sharebite.fragments.ShareFragment"
+        android:label="Share"/>
+
+    <fragment
+        android:id="@+id/messagesFragment"
+        android:name="com.sharebite.fragments.MessagesFragment"
+        android:label="Messages"/>
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.sharebite.fragments.ProfileFragment"
+        android:label="Profile"/>
+
+</navigation>

@@ -1,0 +1,32 @@
+# Android Studio
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Android
+**/build/
+*.apk
+*.aar
+*.jar
+
+# Logs
+*.log
+
+# Sensitive
+# Uncomment if you want to ignore firebase config
+# google-services.json
+*.hprof 
+.gradle/ 
+build/ 
