@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212">
+    android:background="#FFFFFF">
 
     <!-- Scrollable content -->
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:id="@+id/scrollContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -26,17 +27,16 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
-                    android:background="#2A2A2A"/>
+                    android:background="#F5F5F5"/>
 
-                <!-- Dim overlay when claimed -->
+                <!-- Status Overlay (optional dimming) -->
                 <View
                     android:id="@+id/viewDimOverlay"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="#AA000000"
+                    android:background="#99000000"
                     android:visibility="gone"/>
 
-                <!-- Claimed overlay -->
                 <LinearLayout
                     android:id="@+id/layoutClaimed"
                     android:layout_width="match_parent"
@@ -48,9 +48,9 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="CLAIMED"
-                        android:textSize="42sp"
+                        android:textSize="32sp"
                         android:textStyle="bold"
-                        android:textColor="@color/white"
+                        android:textColor="#FFFFFF"
                         android:background="@drawable/bg_claimed_badge"
                         android:paddingStart="24dp"
                         android:paddingEnd="24dp"
@@ -60,347 +60,450 @@
                 </LinearLayout>
 
                 <!-- Back button -->
-                <TextView
+                <androidx.cardview.widget.CardView
                     android:id="@+id/btnBack"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
-                    android:text="&#8592;"
-                    android:textSize="22sp"
-                    android:textColor="@color/white"
-                    android:gravity="center"
-                    android:background="@drawable/bg_timer_badge"
-                    android:layout_margin="16dp"/>
+                    app:cardCornerRadius="20dp"
+                    app:cardBackgroundColor="#FFFFFF"
+                    app:cardElevation="4dp"
+                    android:layout_margin="16dp">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:src="@android:drawable/ic_menu_revert"
+                        app:tint="#000000"/>
+
+                </androidx.cardview.widget.CardView>
 
             </FrameLayout>
 
-            <!-- Details -->
+            <!-- Details Section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#1E1E1E"
-                android:padding="20dp">
+                android:padding="24dp"
+                android:layout_marginTop="-20dp"
+                android:background="@drawable/bg_detail_rounded"
+                android:backgroundTint="#FFFFFF">
 
-                <!-- Title + Timer -->
-                <RelativeLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/tvDetailFoodName"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp">
+                    android:text="Organic Tomato Rice"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="#212121"
+                    android:fontFamily="sans-serif-medium"/>
 
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/tvDetailFoodName"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Food Name"
-                            android:textSize="24sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"/>
-
-                        <TextView
-                            android:id="@+id/tvDetailCategory"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Cooked Meal"
-                            android:textSize="13sp"
-                            android:textColor="@color/green_primary"
-                            android:background="@drawable/bg_category_selected"
-                            android:paddingStart="12dp"
-                            android:paddingEnd="12dp"
-                            android:paddingTop="4dp"
-                            android:paddingBottom="4dp"
-                            android:layout_marginTop="8dp"/>
-
-                    </LinearLayout>
-
-                    <!-- Countdown -->
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:gravity="center"
-                        android:layout_alignParentEnd="true">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Expires in"
-                            android:textSize="11sp"
-                            android:textColor="#E53935"/>
-
-                        <TextView
-                            android:id="@+id/tvCountdown"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="01 : 27 : 28"
-                            android:textSize="22sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"/>
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="40dp"
-                                android:layout_height="wrap_content"
-                                android:text="hr"
-                                android:textSize="10sp"
-                                android:textColor="@color/gray_text"
-                                android:gravity="center"/>
-
-                            <TextView
-                                android:layout_width="40dp"
-                                android:layout_height="wrap_content"
-                                android:text="min"
-                                android:textSize="10sp"
-                                android:textColor="@color/gray_text"
-                                android:gravity="center"/>
-
-                            <TextView
-                                android:layout_width="40dp"
-                                android:layout_height="wrap_content"
-                                android:text="sec"
-                                android:textSize="10sp"
-                                android:textColor="@color/gray_text"
-                                android:gravity="center"/>
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </RelativeLayout>
-
-                <!-- Info Box -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:background="@drawable/bg_info_box"
-                    android:padding="16dp"
-                    android:layout_marginBottom="16dp">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="24dp">
 
-                    <RelativeLayout
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:id="@+id/tvDetailCategory"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:paddingBottom="14dp">
+                        android:text="HOME COOKED"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF"
+                        android:background="@drawable/bg_chip_selected"
+                        android:backgroundTint="#212121"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"/>
 
+                    <View android:layout_width="12dp" android:layout_height="1dp"/>
+
+                    <TextView
+                        android:id="@+id/tvCountdown"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Expires in 2h 42m"
+                        android:textSize="13sp"
+                        android:textColor="#D32F2F"
+                        android:textStyle="bold"/>
+
+                </LinearLayout>
+
+                <!-- Information Grid -->
+                <GridLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="2"
+                    android:rowCount="1"
+                    android:layout_marginBottom="24dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:orientation="vertical"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_input_field"
+                        android:backgroundTint="#FAFAFA"
+                        android:layout_marginEnd="6dp">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="&#127859;  Quantity"
-                            android:textSize="15sp"
-                            android:textColor="#AAAAAA"/>
-
+                            android:text="Quantity"
+                            android:textSize="12sp"
+                            android:textColor="#757575"/>
                         <TextView
                             android:id="@+id/tvDetailQuantity"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="4 plates"
-                            android:textSize="15sp"
+                            android:text="3 Servings"
+                            android:textSize="16sp"
                             android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:layout_alignParentEnd="true"/>
+                            android:textColor="#212121"
+                            android:layout_marginTop="4dp"/>
+                    </LinearLayout>
 
-                    </RelativeLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="#333333"
-                        android:layout_marginBottom="14dp"/>
-
-                    <RelativeLayout
-                        android:layout_width="match_parent"
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:paddingBottom="14dp">
-
+                        android:layout_columnWeight="1"
+                        android:orientation="vertical"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_input_field"
+                        android:backgroundTint="#FAFAFA"
+                        android:layout_marginStart="6dp">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="&#128205;  Location"
-                            android:textSize="15sp"
-                            android:textColor="#AAAAAA"/>
-
+                            android:text="Location"
+                            android:textSize="12sp"
+                            android:textColor="#757575"/>
                         <TextView
                             android:id="@+id/tvDetailLocation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Location"
-                            android:textSize="15sp"
+                            android:text="Chennai"
+                            android:textSize="16sp"
                             android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:layout_alignParentEnd="true"/>
+                            android:textColor="#212121"
+                            android:layout_marginTop="4dp"/>
+                    </LinearLayout>
 
-                    </RelativeLayout>
+                </GridLayout>
 
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="#333333"
-                        android:layout_marginBottom="14dp"/>
-
-                    <RelativeLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="&#9201;  Pickup window"
-                            android:textSize="15sp"
-                            android:textColor="#AAAAAA"/>
-
-                        <TextView
-                            android:id="@+id/tvDetailPickup"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Now"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:layout_alignParentEnd="true"/>
-
-                    </RelativeLayout>
-
-                </LinearLayout>
-
-                <!-- Halal Tag -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="halal"
-                    android:textSize="12sp"
-                    android:textColor="@color/green_primary"
-                    android:background="@drawable/bg_tag_green"
-                    android:gravity="center"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:layout_marginBottom="16dp"/>
-
-                <!-- About -->
+                <!-- Description -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="About this listing"
-                    android:textSize="17sp"
+                    android:text="Description"
+                    android:textSize="16sp"
                     android:textStyle="bold"
-                    android:textColor="@color/white"
+                    android:textColor="#212121"
                     android:layout_marginBottom="8dp"/>
 
                 <TextView
                     android:id="@+id/tvDetailDesc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Fresh and ready!"
+                    android:text="Freshly prepared home-cooked tomato rice. Healthy and delicious, made with organic ingredients."
                     android:textSize="14sp"
-                    android:textColor="#AAAAAA"
-                    android:layout_marginBottom="20dp"/>
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="#616161"
+                    android:layout_marginBottom="32dp"/>
 
-                <!-- Donor Card -->
-                <LinearLayout
+                <!-- Donor Section -->
+                <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:background="@drawable/bg_info_box"
-                    android:padding="16dp">
+                    android:padding="16dp"
+                    android:background="@drawable/bg_input_field"
+                    android:backgroundTint="#FAFAFA">
 
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Donor"
-                        android:textSize="16sp"
+                        android:id="@+id/tvDonorAvatar"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:text="K"
+                        android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/white"
-                        android:layout_marginBottom="12dp"/>
+                        android:textColor="#FFFFFF"
+                        android:gravity="center"
+                        android:background="@drawable/bg_avatar"
+                        android:backgroundTint="#00C853"
+                        android:layout_marginEnd="16dp"/>
 
                     <LinearLayout
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:orientation="vertical"
+                        android:layout_toEndOf="@+id/tvDonorAvatar">
 
                         <TextView
-                            android:id="@+id/tvDonorAvatar"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:text="Y"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:gravity="center"
-                            android:background="@drawable/bg_avatar"
-                            android:layout_marginEnd="14dp"/>
-
-                        <LinearLayout
+                            android:id="@+id/tvDonorName"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:orientation="vertical">
+                            android:text="Karthik"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="#212121"/>
 
-                            <TextView
-                                android:id="@+id/tvDonorName"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="You"
-                                android:textSize="16sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/white"/>
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="&#9733; 4.9 · 23 donations"
-                                android:textSize="13sp"
-                                android:textColor="#AAAAAA"/>
-
-                        </LinearLayout>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Verified Donor · 4.9 ★"
+                            android:textSize="12sp"
+                            android:textColor="#757575"/>
 
                     </LinearLayout>
 
-                </LinearLayout>
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:src="@android:drawable/ic_dialog_info"
+                        app:tint="#BDBDBD"/>
+
+                </RelativeLayout>
 
             </LinearLayout>
 
         </LinearLayout>
 
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
-    <!-- Bottom Bar — Claim + Message buttons -->
+    <!-- Bottom Actions -->
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="20dp"
+        android:background="#FFFFFF"
+        android:elevation="8dp"
+        android:layout_alignParentBottom="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMessageDonor"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="CHAT"
+            android:textColor="#00C853"
+            app:strokeColor="#00C853"
+            app:cornerRadius="12dp"
+            android:layout_marginEnd="12dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnClaimFood"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1.5"
+            android:text="CLAIM FOOD"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#00C853"
+            app:cornerRadius="12dp"/>
+
+    </LinearLayout>
+
+</RelativeLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#334155" android:layout_marginTop="14dp" android:layout_marginBottom="14dp"/>
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="📍  Location"
+                                android:textColor="#94A3B8"/>
+                            <TextView
+                                android:id="@+id/tvDetailLocation"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Chennai"
+                                android:textStyle="bold"
+                                android:textColor="#F8FAFC"
+                                android:layout_alignParentEnd="true"/>
+                        </RelativeLayout>
+
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#334155" android:layout_marginTop="14dp" android:layout_marginBottom="14dp"/>
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="⏱️  Pickup window"
+                                android:textColor="#94A3B8"/>
+                            <TextView
+                                android:id="@+id/tvDetailPickup"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Now · Chennai"
+                                android:textStyle="bold"
+                                android:textColor="#F8FAFC"
+                                android:layout_alignParentEnd="true"/>
+                        </RelativeLayout>
+
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+                <!-- Tags Row -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="halal"
+                    android:textSize="11sp"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/bg_chip_selected"
+                    android:backgroundTint="#059669"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:layout_marginBottom="24dp"/>
+
+                <!-- Description Section -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="About this listing"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="#F8FAFC"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tvDetailDesc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Tasty"
+                    android:textSize="14sp"
+                    android:textColor="#94A3B8"
+                    android:layout_marginBottom="32dp"/>
+
+                <!-- Donor Card (Image 3 style) -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="20dp"
+                    app:cardBackgroundColor="#1E293B"
+                    app:cardElevation="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Donor"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="#F8FAFC"
+                            android:layout_marginBottom="16dp"/>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:id="@+id/tvDonorAvatar"
+                                android:layout_width="54dp"
+                                android:layout_height="54dp"
+                                android:text="S"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="#FFFFFF"
+                                android:gravity="center"
+                                android:background="@drawable/bg_avatar"
+                                android:backgroundTint="#10B981"
+                                android:layout_marginEnd="16dp"/>
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/tvDonorName"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="santhoshsanthosh"
+                                    android:textSize="16sp"
+                                    android:textStyle="bold"
+                                    android:textColor="#F8FAFC"/>
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="★ 4.9 · 32 donations"
+                                    android:textSize="13sp"
+                                    android:textColor="#94A3B8"
+                                    android:layout_marginTop="2dp"/>
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Bottom Actions Bar (Image 3) -->
     <LinearLayout
         android:id="@+id/bottomBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="#1E1E1E"
-        android:padding="16dp"
+        android:padding="24dp"
+        android:background="#0F172A"
         android:layout_alignParentBottom="true">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnClaimFood"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="&#127860; Claim This Food"
-            android:textSize="17sp"
-            android:textColor="@color/white"
+            android:layout_height="60dp"
+            android:text="CLAIM FOOD"
+            android:textSize="16sp"
+            app:cornerRadius="16dp"
+            android:textColor="#FFFFFF"
             android:textStyle="bold"
-            android:backgroundTint="@color/green_primary"
-            android:stateListAnimator="@null"
-            android:layout_marginBottom="10dp"/>
+            app:backgroundTint="#10B981"
+            android:layout_marginBottom="12dp"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnMessageDonor"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="&#128172; Message Donor"
-            android:textSize="15sp"
-            android:textColor="@color/white"
-            android:backgroundTint="#2A2A2A"
-            android:stateListAnimator="@null"/>
+            android:layout_height="56dp"
+            android:text="MESSAGE DONOR"
+            android:textSize="14sp"
+            app:cornerRadius="16dp"
+            android:textColor="#F8FAFC"
+            app:strokeColor="#334155"
+            app:strokeWidth="1dp"
+            app:backgroundTint="#1E293B"/>
 
     </LinearLayout>
 

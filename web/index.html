@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShareBite | Neighborly Food Sharing</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="dark-theme">
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="glass-nav">
+            <div class="nav-content">
+                <div class="logo">
+                    <span class="logo-icon">🍏</span>
+                    <h1>ShareBite</h1>
+                </div>
+                <div class="nav-links">
+                    <button id="btn-feed" class="nav-item active"><i
+                            data-lucide="layout-grid"></i><span>Feed</span></button>
+                    <button id="btn-map" class="nav-item"><i data-lucide="map"></i><span>Map</span></button>
+                    <button id="btn-share" class="nav-item btn-primary-nav"><i
+                            data-lucide="plus-circle"></i><span>Share</span></button>
+                    <button id="btn-chat" class="nav-item"><i
+                            data-lucide="message-square"></i><span>Chat</span></button>
+                    <button id="btn-profile" class="nav-item"><i data-lucide="user"></i><span>Profile</span></button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <div id="auth-screen" class="screen active">
+                <div class="auth-container glass">
+                    <h2>Welcome to ShareBite</h2>
+                    <p>Reducing waste, one share at a time.</p>
+                    <div class="auth-tabs">
+                        <button id="tab-login" class="tab active">Login</button>
+                        <button id="tab-signup" class="tab">Sign Up</button>
+                    </div>
+                    <form id="auth-form">
+                        <div class="input-group">
+                            <label>Email</label>
+                            <input type="email" id="auth-email" placeholder="Enter your email" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Password</label>
+                            <input type="password" id="auth-password" placeholder="Min 6 characters" required>
+                        </div>
+                        <button type="submit" id="btn-auth-submit" class="btn-primary">Login</button>
+                    </form>
+                    <div class="divider"><span>OR</span></div>
+                    <button id="btn-google-auth" class="btn-secondary">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" alt="Google">
+                        Continue with Google
+                    </button>
+                </div>
+            </div>
+
+            <!-- Other screens loaded dynamically -->
+            <div id="feed-screen" class="screen"></div>
+            <div id="map-screen" class="screen"></div>
+            <div id="share-screen" class="screen"></div>
+            <div id="chat-screen" class="screen"></div>
+            <div id="profile-screen" class="screen"></div>
+        </main>
+
+        <!-- Dynamic Toasts -->
+        <div id="toast-container"></div>
+    </div>
+
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBB8Z1wXZsUiPPlLrpeFOQCgO-Mtu_FRjM&callback=loadMap"
+        async defer></script>
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

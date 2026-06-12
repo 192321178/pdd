@@ -1,72 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:background="@color/white"
-    android:padding="16dp"
-    android:layout_marginBottom="1dp">
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="#FFFFFF">
 
-    <!-- Avatar -->
-    <TextView
-        android:id="@+id/tvChatAvatar"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:text="U"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="@color/white"
-        android:gravity="center"
-        android:background="@drawable/bg_avatar"
-        android:layout_marginEnd="14dp"/>
-
-    <!-- Name + Last message -->
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp">
 
+        <!-- Avatar -->
         <TextView
-            android:id="@+id/tvChatName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="User Name"
-            android:textSize="15sp"
+            android:id="@+id/tvChatAvatar"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:text="K"
+            android:textSize="22sp"
             android:textStyle="bold"
-            android:textColor="@color/black"/>
+            android:textColor="#FFFFFF"
+            android:gravity="center"
+            android:background="@drawable/bg_avatar"
+            android:backgroundTint="#00C853"
+            android:layout_marginEnd="16dp"
+            android:elevation="4dp"/>
 
-        <TextView
-            android:id="@+id/tvChatFoodName"
-            android:layout_width="wrap_content"
+        <!-- Name + Last message -->
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Regarding: Food Name"
-            android:textSize="12sp"
-            android:textColor="@color/green_primary"
-            android:layout_marginTop="2dp"/>
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tvLastMessage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Last message..."
-            android:textSize="13sp"
-            android:textColor="@color/gray_text"
-            android:layout_marginTop="2dp"
-            android:maxLines="1"
-            android:ellipsize="end"/>
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:id="@+id/tvChatName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="User Name"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="#212121"
+                    android:fontFamily="sans-serif-medium"/>
+
+                <TextView
+                    android:id="@+id/tvChatTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:text="Just now"
+                    android:textSize="12sp"
+                    android:textColor="#9E9E9E"/>
+
+            </RelativeLayout>
+
+            <TextView
+                android:id="@+id/tvChatFoodName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tomato Rice"
+                android:textSize="13sp"
+                android:textColor="#00C853"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp"/>
+
+            <TextView
+                android:id="@+id/tvLastMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hi, is the food still available?"
+                android:textSize="14sp"
+                android:textColor="#757575"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:ellipsize="end"/>
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <!-- Time -->
-    <TextView
-        android:id="@+id/tvChatTime"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="2m ago"
-        android:textSize="11sp"
-        android:textColor="@color/gray_text"
-        android:layout_marginStart="8dp"/>
-
-</LinearLayout>
+</androidx.cardview.widget.CardView>

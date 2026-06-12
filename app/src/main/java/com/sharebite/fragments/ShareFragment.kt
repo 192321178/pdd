@@ -35,9 +35,10 @@ class ShareFragment : Fragment() {
             selectedImageUri = result.data?.data
             selectedImageUri?.let { uri ->
                 val imgPreview     = view?.findViewById<ImageView>(R.id.imgPhotoPreview)
-                val layoutAddPhoto = view?.findViewById<LinearLayout>(R.id.layoutAddPhoto)
+                val layoutAddPhoto = view?.findViewById<View>(R.id.layoutAddPhoto)
+                val cardPreview    = view?.findViewById<View>(R.id.cardPhotoPreview)
                 imgPreview?.setImageURI(uri)
-                imgPreview?.visibility     = View.VISIBLE
+                cardPreview?.visibility    = View.VISIBLE
                 layoutAddPhoto?.visibility = View.GONE
             }
         }
@@ -62,8 +63,9 @@ class ShareFragment : Fragment() {
         val etExpiryMins   = view.findViewById<EditText>(R.id.etExpiryMins)
         val switchAnon     = view.findViewById<SwitchCompat>(R.id.switchAnonymous)
         val btnShare       = view.findViewById<Button>(R.id.btnShare)
-        val layoutAddPhoto = view.findViewById<LinearLayout>(R.id.layoutAddPhoto)
+        val layoutAddPhoto = view.findViewById<View>(R.id.layoutAddPhoto)
         val imgPreview     = view.findViewById<ImageView>(R.id.imgPhotoPreview)
+        val cardPreview    = view.findViewById<View>(R.id.cardPhotoPreview)
 
         layoutAddPhoto.setOnClickListener { openGallery() }
         imgPreview.setOnClickListener { openGallery() }
@@ -91,24 +93,10 @@ class ShareFragment : Fragment() {
 
         listOf(
             view.findViewById<TextView>(R.id.tagDairyFree),
-            view.findViewById(R.id.tagVegan),
-            view.findViewById(R.id.tagHalal)
+            view.findViewById<TextView>(R.id.tagVegan),
+            view.findViewById<TextView>(R.id.tagHalal)
         ).forEach { tag ->
-            tag.setOnClickListener {
-                val isSelected = tag.tag == "selected"
-                tag.tag = if (isSelected) null else "selected"
-                tag.setTextColor(
-                    ContextCompat.getColor(
-                        requireContext(),
-                        if (isSelected) R.color.black else R.color.green_primary
-                    )
-                )
-                tag.background = ContextCompat.getDrawable(
-                    requireContext(),
-                    if (isSelected) R.drawable.bg_category_unselected
-                    else R.drawable.bg_category_selected
-                )
-            }
+            tag.visibility = View.GONE
         }
 
         btnShare.setOnClickListener {
@@ -146,7 +134,6 @@ class ShareFragment : Fragment() {
             btnShare.isEnabled = false
             btnShare.text = "Processing..."
 
-            // ✅ Image-ஐ Base64-ல் convert பண்ணி Firebase-லயே save பண்ணு
             val base64Image = selectedImageUri?.let { convertToBase64(it) }
 
             fetchNameAndSave(
@@ -157,7 +144,6 @@ class ShareFragment : Fragment() {
         }
     }
 
-    // ✅ Image → Base64 convert — எல்லா phones-லயும் தெரியும்
     private fun convertToBase64(uri: Uri): String? {
         return try {
             val inputStream = requireContext().contentResolver.openInputStream(uri)
@@ -166,7 +152,6 @@ class ShareFragment : Fragment() {
 
             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes!!.size)
 
-            // ✅ Image resize — Firebase size limit கடக்காம
             val resized = Bitmap.createScaledBitmap(bitmap, 400, 300, true)
             val outputStream = ByteArrayOutputStream()
             resized.compress(Bitmap.CompressFormat.JPEG, 60, outputStream)
@@ -269,18 +254,8 @@ class ShareFragment : Fragment() {
                 if (isSelected) R.drawable.bg_category_selected
                 else R.drawable.bg_category_unselected
             )
-            (chip.getChildAt(0) as? TextView)?.setTextColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    if (isSelected) R.color.green_primary else R.color.gray_text
-                )
-            )
-            (chip.getChildAt(1) as? TextView)?.setTextColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    if (isSelected) R.color.green_primary else R.color.black
-                )
-            )
+            val textColor = if (isSelected) "#FFFFFF" else "#94A3B8"
+            (chip.getChildAt(0) as? TextView)?.setTextColor(android.graphics.Color.parseColor(textColor))
         }
     }
 }

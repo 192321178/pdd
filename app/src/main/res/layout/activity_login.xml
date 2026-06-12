@@ -2,159 +2,174 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="#FFFFFF"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="28dp">
+        android:padding="32dp">
 
-        <!-- Logo + App Name -->
+        <!-- Logo Section (Match Image) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:gravity="center"
-            android:paddingTop="40dp"
-            android:paddingBottom="32dp">
+            android:paddingTop="32dp"
+            android:paddingBottom="48dp">
 
-            <FrameLayout
-                android:layout_width="72dp"
-                android:layout_height="72dp"
-                android:background="@color/green_primary">
+            <androidx.cardview.widget.CardView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_gravity="center"
+                android:backgroundTint="#00C853"
+                app:cardCornerRadius="0dp"
+                app:cardElevation="0dp"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
 
                 <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:layout_gravity="center"
                     android:src="@android:drawable/ic_menu_share"
-                    android:tint="@color/white"/>
+                    android:tint="#FFFFFF"/>
 
-            </FrameLayout>
+            </androidx.cardview.widget.CardView>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="ShareBite"
-                android:textSize="24sp"
+                android:textSize="26sp"
                 android:textStyle="bold"
-                android:textColor="@color/green_primary"
-                android:layout_marginTop="12dp"/>
+                android:textColor="#00C853"
+                android:layout_marginTop="16dp"
+                android:fontFamily="sans-serif-medium"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Share food. Build community."
                 android:textSize="14sp"
-                android:textColor="@color/gray_text"/>
+                android:textColor="#9E9E9E"/>
 
         </LinearLayout>
 
-        <!-- Title -->
+        <!-- Welcome Text -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Welcome back"
-            android:textSize="26sp"
+            android:textSize="32sp"
             android:textStyle="bold"
-            android:textColor="@color/black"/>
+            android:textColor="#000000"
+            android:fontFamily="sans-serif-black"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Login to continue sharing"
             android:textSize="14sp"
-            android:textColor="@color/gray_text"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="28dp"/>
+            android:textColor="#9E9E9E"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="32dp"
+            android:fontFamily="sans-serif-medium"/>
 
-        <!-- Email -->
+        <!-- Inputs (Match Image) -->
         <EditText
             android:id="@+id/etEmail"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="62dp"
             android:hint="Email address"
             android:inputType="textEmailAddress"
             android:background="@drawable/bg_input_field"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:layout_marginBottom="14dp"/>
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:textColor="#000000"
+            android:textColorHint="#757575"
+            android:layout_marginBottom="16dp"/>
 
-        <!-- Password -->
         <EditText
             android:id="@+id/etPassword"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="62dp"
             android:hint="Password"
             android:inputType="textPassword"
             android:background="@drawable/bg_input_field"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"/>
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:textColor="#000000"
+            android:textColorHint="#757575"/>
 
-        <!-- Forgot Password -->
         <TextView
             android:id="@+id/tvForgotPassword"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Forgot password?"
-            android:textColor="@color/green_primary"
+            android:textColor="#00C853"
+            android:textStyle="bold"
             android:layout_gravity="end"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="32dp"/>
 
-        <!-- Login Button -->
-        <Button
+        <!-- LOGIN Button (Match Image) -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSignIn"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Login"
-            android:backgroundTint="@color/green_primary"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            android:textStyle="bold"/>
+            android:layout_height="58dp"
+            android:text="LOGIN"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#00C853"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            app:cornerRadius="8dp"
+            android:layout_marginBottom="24dp"/>
 
-        <!-- OR Divider -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="or"
             android:gravity="center"
-            android:textColor="@color/gray_text"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="16dp"/>
+            android:textColor="#9E9E9E"
+            android:layout_marginBottom="24dp"/>
 
-        <!-- Continue with Google -->
-        <Button
+        <!-- CONTINUE WITH GOOGLE -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGoogle"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Continue with Google"
-            android:backgroundTint="@color/white"
-            android:textColor="@color/black"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+            android:layout_height="58dp"
+            android:text="CONTINUE WITH GOOGLE"
+            android:backgroundTint="#FFFFFF"
+            android:textColor="#000000"
+            android:textSize="14sp"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            app:strokeColor="#E0E0E0"
+            app:strokeWidth="1dp"
+            app:cornerRadius="8dp"/>
 
-        <!-- Sign Up Link -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
-            android:layout_marginTop="20dp">
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="20dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Don't have an account? "
-                android:textColor="@color/gray_text"/>
+                android:textColor="#757575"/>
 
             <TextView
                 android:id="@+id/tvSignUp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Sign up"
-                android:textColor="@color/green_primary"
+                android:textColor="#00C853"
                 android:textStyle="bold"/>
 
         </LinearLayout>

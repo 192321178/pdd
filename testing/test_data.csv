@@ -1,0 +1,5 @@
+ScenarioID,Email,Password,FoodName,Category,Quantity,Description,ExpectSuccess
+TC_LOGIN_01,testuser@example.com,password123,,,,TRUE
+TC_LOGIN_02,invalid@example.com,wrongpass,,,,FALSE
+TC_SHARE_01,testuser@example.com,password123,Homemade Pizza,Cooked,2 Slices,Delicious vegetarian pizza,TRUE
+TC_SHARE_02,testuser@example.com,password123,Organic Apples,Produce,5 Nos,Fresh apples from my garden,TRUE
