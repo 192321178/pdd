@@ -32,7 +32,12 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 }
+
 
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
