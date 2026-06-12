@@ -19,7 +19,8 @@ local.properties
 **/build/
 *.apk
 *.aar
-*.jar
+# *.jar - Allow jars for gradle wrapper
+!gradle/wrapper/gradle-wrapper.jar
 
 # Logs
 *.log
