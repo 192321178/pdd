@@ -1,54 +1,75 @@
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { rtdb } from "./firebase-config.js";
+import { auth } from "./firebase-config.js";
+
+let leafletMap = null;
+let markersLayer = null;
 
 export function initMap() {
-    const mapScreen = document.getElementById('map-screen');
-    mapScreen.innerHTML = `
-        <div class="map-container glass">
-            <div id="google-map" style="width: 100%; height: 100%; border-radius: 16px;"></div>
-        </div>
-    `;
+    // initMap is called at startup; actual map load deferred to navigateTo('map')
+    // window.loadMap is set here for the navigateTo trigger
+}
 
-    const mapOptions = {
-        center: { lat: 11.0168, lng: 76.9558 }, // Coimbatore
-        zoom: 12,
-        styles: [
-            { "featureType": "all", "elementType": "labels.text.fill", "stylers": [{ "color": "#ffffff" }] },
-            { "featureType": "all", "elementType": "labels.text.stroke", "stylers": [{ "color": "#000000" }, { "lightness": 13 }] },
-            { "featureType": "administrative", "elementType": "geometry.fill", "stylers": [{ "color": "#000000" }, { "lightness": 20 }] },
-            { "featureType": "landscape", "elementType": "geometry", "stylers": [{ "color": "#000000" }, { "lightness": 20 }] },
-            { "featureType": "poi", "elementType": "geometry", "stylers": [{ "color": "#000000" }, { "lightness": 21 }] },
-            { "featureType": "road.highway", "elementType": "geometry.fill", "stylers": [{ "color": "#000000" }, { "lightness": 17 }] },
-            { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }, { "lightness": 17 }] }
-        ]
-    };
+function loadLeafletMap() {
+    const mapDiv = document.getElementById('google-map');
+    if (!mapDiv) return;
 
-    const map = new google.maps.Map(document.getElementById("google-map"), mapOptions);
+    if (leafletMap) {
+        leafletMap.invalidateSize();
+        return;
+    }
 
-    // Load Food Markers from RTDB
+    leafletMap = L.map('google-map', {
+        center: [11.0168, 76.9558],
+        zoom: 13,
+        zoomControl: true,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+    }).addTo(leafletMap);
+
+    markersLayer = L.layerGroup().addTo(leafletMap);
+
+    // Current user location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            const { latitude: lat, longitude: lng } = pos.coords;
+            leafletMap.setView([lat, lng], 14);
+            L.circleMarker([lat, lng], {
+                radius: 10, fillColor: '#F59E0B',
+                color: '#fff', weight: 3, fillOpacity: 1,
+            }).addTo(leafletMap).bindPopup('<b>📍 You</b>');
+        }, () => { });
+    }
+
+    // Food markers from Firebase
     const foodRef = ref(rtdb, 'food_items');
-    onValue(foodRef, (snapshot) => {
+    onValue(foodRef, snapshot => {
+        markersLayer.clearLayers();
         if (!snapshot.exists()) return;
-
-        snapshot.forEach((child) => {
+        snapshot.forEach(child => {
             const item = child.val();
-            if (item.lat && item.lng) {
-                new google.maps.Marker({
-                    position: { lat: parseFloat(item.lat), lng: parseFloat(item.lng) },
-                    map,
-                    title: item.foodName,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        fillColor: '#00C853',
-                        fillOpacity: 1,
-                        strokeColor: '#FFFFFF',
-                        strokeWeight: 2,
-                        scale: 8
-                    }
-                });
-            }
+            if (!item.lat || !item.lng) return;
+            const marker = L.circleMarker(
+                [parseFloat(item.lat), parseFloat(item.lng)],
+                {
+                    radius: 11,
+                    fillColor: item.isClaimed ? '#1565C0' : '#005028',
+                    color: '#fff', weight: 2.5, fillOpacity: 0.9,
+                }
+            );
+            marker.bindPopup(`
+                <div style="font-family:Inter,sans-serif;min-width:140px">
+                    <b style="color:#005028">${item.foodName || 'Food'}</b><br>
+                    <span style="color:#6B7280;font-size:12px">${item.category || ''}</span><br>
+                    <span style="font-size:11px">${item.isClaimed ? '🔵 Claimed' : '🟢 Available'}</span>
+                </div>
+            `);
+            markersLayer.addLayer(marker);
         });
     });
 }
 
-window.loadMap = initMap;
+window.loadMap = loadLeafletMap;

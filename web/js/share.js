@@ -1,140 +1,145 @@
-import { ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { auth, rtdb } from "./firebase-config.js";
-import { navigateTo, showToast } from "./app.js";
+import { ref, push, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { rtdb, storage, auth } from "./firebase-config.js";
 
 export function initShare() {
-    const shareScreen = document.getElementById('share-screen');
-
-    shareScreen.innerHTML = `
-        <div class="share-container">
-            <h2>Share Surplus Food</h2>
-            <p class="subtitle">Enter details of the food you'd like to share with the community.</p>
-            
-            <form id="share-form" class="glass-form">
-                <div id="photo-upload" class="photo-upload-box">
-                    <i data-lucide="camera"></i>
-                    <span>Add Food Photo</span>
-                    <input type="file" id="input-photo" accept="image/*" style="display:none">
-                    <img id="share-preview" src="" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:12px;">
-                </div>
-
-                <div class="input-group">
-                    <label>Food Item Name</label>
-                    <input type="text" id="share-name" placeholder="E.g. Homemade Pasta" required>
-                </div>
-
-                <div class="form-grid">
-                    <div class="input-group">
-                        <label>Category</label>
-                        <select id="share-category">
-                            <option>Cooked Meal</option>
-                            <option>Fresh Produce</option>
-                            <option>Bakery</option>
-                            <option>Packaged</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>Quantity</label>
-                        <input type="text" id="share-quantity" placeholder="E.g. 2 Servings" required>
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>Description</label>
-                    <textarea id="share-desc" placeholder="Details about freshness or pickup..."></textarea>
-                </div>
-
-                <div class="form-grid">
-                    <div class="input-group">
-                        <label>Location</label>
-                        <input type="text" id="share-location" placeholder="E.g. Main Street" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Expiry (Hours)</label>
-                        <input type="number" id="share-expiry" value="4" min="1" required>
-                    </div>
-                </div>
-
-                <button type="submit" id="btn-share-submit" class="btn-primary">Post Listing</button>
-            </form>
-        </div>
-    `;
-
-    lucide.createIcons();
-
-    const photoBox = document.getElementById('photo-upload');
-    const inputPhoto = document.getElementById('input-photo');
-    const preview = document.getElementById('share-preview');
     const form = document.getElementById('share-form');
+    const photoBox = document.getElementById('photo-upload-box');
+    const photoInput = document.getElementById('photo-input');
+    const photoPreview = document.getElementById('photo-preview');
+    const submitBtn = document.getElementById('btn-share-submit');
+    const categoryChips = document.getElementById('category-chips');
+    const dietaryChips = document.getElementById('dietary-chips');
 
-    let base64Image = null;
+    let selectedCategory = 'Cooked Meal';
+    let selectedTags = [];
+    let selectedPhotoFile = null;
 
-    photoBox.addEventListener('click', () => inputPhoto.click());
+    // Photo upload
+    photoBox?.addEventListener('click', (e) => {
+        if (e.target !== photoInput) photoInput?.click();
+    });
+    photoInput?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        selectedPhotoFile = file;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            photoPreview.src = ev.target.result;
+            photoPreview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    });
 
-    inputPhoto.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (re) => {
-                const img = new Image();
-                img.src = re.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 600;
-                    const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    base64Image = canvas.toDataURL('image/jpeg', 0.7);
+    // Category chip selection
+    categoryChips?.addEventListener('click', e => {
+        const chip = e.target.closest('.cat-chip');
+        if (!chip) return;
+        document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        selectedCategory = chip.getAttribute('data-cat');
+    });
 
-                    preview.src = base64Image;
-                    preview.style.display = 'block';
-                    photoBox.querySelector('i').style.display = 'none';
-                    photoBox.querySelector('span').style.display = 'none';
-                };
-            };
-            reader.readAsDataURL(file);
+    // Dietary tag selection
+    dietaryChips?.addEventListener('click', e => {
+        const chip = e.target.closest('.diet-chip');
+        if (!chip) return;
+        chip.classList.toggle('active');
+        const tag = chip.getAttribute('data-tag');
+        if (chip.classList.contains('active')) {
+            selectedTags.push(tag);
+        } else {
+            selectedTags = selectedTags.filter(t => t !== tag);
         }
     });
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    // Share food submit
+    submitBtn?.addEventListener('click', () => submitShare());
+    form?.addEventListener('submit', e => { e.preventDefault(); submitShare(); });
+
+    async function submitShare() {
         const user = auth.currentUser;
-        if (!user) return showToast("Please login first", "error");
+        if (!user) { window.showToast?.('Please login first', 'error'); return; }
 
-        const btn = document.getElementById('btn-share-submit');
-        btn.disabled = true;
-        btn.textContent = "Posting...";
+        const foodName = document.getElementById('share-food-name')?.value.trim();
+        const quantity = document.getElementById('share-quantity')?.value.trim();
+        const location = document.getElementById('share-location')?.value.trim();
+        const hours = parseInt(document.getElementById('share-hours')?.value || '0');
+        const mins = parseInt(document.getElementById('share-mins')?.value || '0');
+        const description = document.getElementById('share-description')?.value.trim();
+        const isAnonymous = document.getElementById('anon-toggle')?.checked;
 
-        const itemId = crypto.randomUUID();
-        const foodData = {
-            id: itemId,
-            foodName: document.getElementById('share-name').value,
-            category: document.getElementById('share-category').value,
-            quantity: document.getElementById('share-quantity').value,
-            description: document.getElementById('share-desc').value,
-            location: document.getElementById('share-location').value,
-            expiryTimeMillis: Date.now() + (parseInt(document.getElementById('share-expiry').value) * 3600000),
-            userName: user.displayName || user.email.split('@')[0],
-            userUid: user.uid,
-            imageUri: base64Image,
-            isClaimed: false,
-            claimedByUid: ""
-        };
+        if (!foodName) { window.showToast?.('Enter a food name', 'error'); return; }
+        if (!quantity) { window.showToast?.('Enter quantity', 'error'); return; }
+        if (!location) { window.showToast?.('Enter pickup location', 'error'); return; }
+
+        const expiryMs = Date.now() + (hours * 3600000) + (mins * 60000);
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sharing...';
 
         try {
-            await set(ref(rtdb, 'food_items/' + itemId), foodData);
-            showToast("Food shared successfully! 🎉", "success");
-            navigateTo('feed');
-        } catch (error) {
-            console.error("Posting error:", error);
-            showToast("Failed to post. Try again.", "error");
-        } finally {
-            btn.disabled = false;
-            btn.textContent = "Post Listing";
-        }
-    });
-}
+            let imageData = '';
 
-window.loadShare = initShare;
+            // ✅ Convert photo to Base64 to match mobile app's pattern
+            // This avoids potential Firebase Storage hangs/permission issues
+            if (selectedPhotoFile) {
+                console.log("Encoding image to Base64...");
+                imageData = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = e => resolve(e.target.result);
+                    reader.onerror = err => reject(err);
+                    reader.readAsDataURL(selectedPhotoFile);
+                });
+            }
+
+            console.log("Generating new item ref...");
+            const newItemRef = push(ref(rtdb, 'food_items'));
+
+            // ✅ Aligning data structure with mobile app (location, userUid)
+            const itemData = {
+                id: newItemRef.key,
+                foodName,
+                category: selectedCategory,
+                quantity,
+                location: location, // Changed from pickupLocation to match mobile
+                expiryTimeMillis: expiryMs,
+                description: description || '',
+                dietaryTags: selectedTags,
+                imageUri: imageData, // Storing Base64 data directly
+                isClaimed: false,
+                claimedByUid: "",
+                userUid: isAnonymous ? "" : user.uid, // Mobile app sets to empty string if anonymous
+                userName: isAnonymous ? 'Anonymous' : (user.displayName || user.email?.split('@')[0] || 'User'),
+                isAnonymous,
+                sharedAt: serverTimestamp()
+            };
+
+            console.log("Saving to RTDB:", itemData);
+            await set(newItemRef, itemData);
+
+            window.showToast?.('🌿 Food shared successfully!', 'success');
+            resetForm();
+            window.navigateTo?.('feed');
+        } catch (err) {
+            console.error('Share error:', err);
+            window.showToast?.('Failed to share: ' + (err.message || 'Unknown error'), 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Share';
+        }
+    }
+
+    function resetForm() {
+        form?.reset();
+        photoPreview.src = '';
+        photoPreview.classList.add('hidden');
+        selectedPhotoFile = null;
+        selectedTags = [];
+        selectedCategory = 'Cooked Meal';
+        document.querySelectorAll('.cat-chip').forEach((c, i) => {
+            c.classList.toggle('active', i === 0);
+        });
+        document.querySelectorAll('.diet-chip').forEach(c => c.classList.remove('active'));
+    }
+}

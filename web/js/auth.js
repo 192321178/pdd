@@ -3,92 +3,123 @@ import {
     createUserWithEmailAndPassword,
     signInWithPopup,
     signOut,
-    updateProfile
+    updateProfile,
+    sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { auth, googleProvider, rtdb } from "./firebase-config.js";
-import { ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { showToast } from "./app.js";
+import { ref, set, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+function toast(msg, type) {
+    window.showToast?.(msg, type);
+}
 
 export function initAuthHandlers() {
-    const form = document.getElementById('auth-form');
-    const tabLogin = document.getElementById('tab-login');
-    const tabSignup = document.getElementById('tab-signup');
-    const btnSubmit = document.getElementById('btn-auth-submit');
-    const btnGoogle = document.getElementById('btn-google-auth');
-
-    let mode = 'login';
-
-    tabLogin.addEventListener('click', () => {
-        mode = 'login';
-        tabLogin.classList.add('active');
-        tabSignup.classList.remove('active');
-        btnSubmit.textContent = 'Login';
-    });
-
-    tabSignup.addEventListener('click', () => {
-        mode = 'signup';
-        tabSignup.classList.add('active');
-        tabLogin.classList.remove('active');
-        btnSubmit.textContent = 'Sign Up';
-    });
-
-    form.addEventListener('submit', async (e) => {
+    // ----- LOGIN -----
+    const loginForm = document.getElementById('login-form');
+    loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-password').value;
-
-        btnSubmit.disabled = true;
-        btnSubmit.textContent = 'Processing...';
-
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        const btn = document.getElementById('btn-login');
+        btn.disabled = true; btn.textContent = 'Logging in...';
         try {
-            if (mode === 'login') {
-                await signInWithEmailAndPassword(auth, email, password);
-                showToast("Welcome back!", "success");
-            } else {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-
-                // Save user meta to RTDB (mirroring Android app logic)
-                await set(ref(rtdb, 'users/' + user.uid), {
-                    name: email.split('@')[0],
-                    email: email,
-                    location: "Coimbatore" // Default mirroring
-                });
-
-                showToast("Account created!", "success");
-            }
-        } catch (error) {
-            console.error("Auth error:", error);
-            if (error.code === 'auth/unauthorized-domain') {
-                showToast("Domain not authorized in Firebase Console!", "error");
-                console.error("FIX: Add 'localhost' to Authorized Domains in Firebase Console > Auth > Settings");
-            } else {
-                showToast(error.message, "error");
-            }
+            await signInWithEmailAndPassword(auth, email, password);
+            toast("Welcome back! 🎉", "success");
+        } catch (err) {
+            toast(friendlyError(err.code), "error");
         } finally {
-            btnSubmit.disabled = false;
-            btnSubmit.textContent = mode === 'login' ? 'Login' : 'Sign Up';
+            btn.disabled = false; btn.textContent = 'Login';
         }
     });
 
-    btnGoogle.addEventListener('click', async () => {
+    // ----- SIGNUP -----
+    const signupForm = document.getElementById('signup-form');
+    signupForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('signup-name').value.trim();
+        const email = document.getElementById('signup-email').value.trim();
+        const password = document.getElementById('signup-password').value;
+        const btn = document.getElementById('btn-signup');
+        btn.disabled = true; btn.textContent = 'Creating account...';
         try {
-            await signInWithPopup(auth, googleProvider);
-            showToast("Logged in with Google", "success");
-        } catch (error) {
-            console.error("Google Auth error:", error);
-            if (error.code === 'auth/unauthorized-domain') {
-                showToast("Unauthorized Domain! Add 'localhost' to Firebase Console.", "error");
+            const cred = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(cred.user, { displayName: name });
+            await set(ref(rtdb, 'users/' + cred.user.uid), {
+                name,
+                email,
+                location: "Coimbatore",
+                donations: 0,
+                claims: 0
+            });
+            toast("Account created! Welcome to ShareBite 🌿", "success");
+        } catch (err) {
+            toast(friendlyError(err.code), "error");
+        } finally {
+            btn.disabled = false; btn.textContent = 'Create Account';
+        }
+    });
+
+    // ----- GOOGLE LOGIN/SIGNUP -----
+    const handleGoogleAuth = async () => {
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+
+            // ✅ Sync user data to RTDB upon Google login
+            const userRef = ref(rtdb, 'users/' + user.uid);
+            await update(userRef, {
+                name: user.displayName || user.email?.split('@')[0] || "User",
+                email: user.email,
+                avatar: user.photoURL || "",
+                lastLogin: Date.now()
+            });
+
+            toast("Welcome to ShareBite! 👋", "success");
+        } catch (err) {
+            console.error("Google Auth Error:", err);
+            if (err.code === 'auth/unauthorized-domain') {
+                toast("Unauthorized domain. Please add this URL to Firebase Console Authorized Domains.", "error");
+            } else if (err.code === 'auth/popup-closed-by-user') {
+                toast("Login cancelled", "info");
             } else {
-                showToast("Google login failed: " + error.code, "error");
+                toast(friendlyError(err.code), "error");
             }
         }
+    };
+
+    document.getElementById('btn-google-login')?.addEventListener('click', handleGoogleAuth);
+    document.getElementById('btn-google-signup')?.addEventListener('click', handleGoogleAuth);
+
+    // ----- FORGOT PASSWORD -----
+    document.getElementById('forgot-link')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value.trim();
+        if (!email) { toast("Enter your email first", "error"); return; }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            toast("Password reset email sent!", "success");
+        } catch (err) {
+            toast(friendlyError(err.code), "error");
+        }
+    });
+
+    // ----- LOGOUT -----
+    document.getElementById('btn-logout')?.addEventListener('click', async () => {
+        await signOut(auth);
+        toast("Logged out successfully");
     });
 }
 
-// Global logout function
-window.logout = () => {
-    signOut(auth).then(() => {
-        showToast("Logged out successfully");
-    });
-};
+function friendlyError(code) {
+    const map = {
+        'auth/user-not-found': 'No account found with this email',
+        'auth/wrong-password': 'Incorrect password',
+        'auth/email-already-in-use': 'Email already in use',
+        'auth/weak-password': 'Password must be at least 6 characters',
+        'auth/invalid-email': 'Invalid email address',
+        'auth/unauthorized-domain': 'Add localhost to Firebase Authorized Domains',
+        'auth/popup-closed-by-user': 'Google sign-in was cancelled',
+        'auth/network-request-failed': 'Network error. Check your connection',
+    };
+    return map[code] || 'Something went wrong. Try again.';
+}

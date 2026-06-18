@@ -1,183 +1,200 @@
 import { ref, onValue, push, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { auth, rtdb } from "./firebase-config.js";
+import { rtdb, auth } from "./firebase-config.js";
+
+let currentChatId = null;
+let messagesUnsub = null;
 
 export function initChat() {
-    const chatScreen = document.getElementById('chat-screen');
-
-    chatScreen.innerHTML = `
-        <div class="chat-layout">
-            <div class="chat-sidebar glass">
-                <div class="sidebar-header">
-                    <h3>Messages</h3>
-                </div>
-                <div id="chat-list" class="chat-list">
-                    <div class="loader">Loading conversations...</div>
-                </div>
-            </div>
-            <div id="chat-window" class="chat-window glass">
-                <div class="empty-chat">
-                    <i data-lucide="message-circle"></i>
-                    <p>Select a conversation to start chatting</p>
-                </div>
-            </div>
-        </div>
-    `;
-
-    lucide.createIcons();
-
-    const chatList = document.getElementById('chat-list');
-
-    // Listener for active chats
-    const handleAuth = (user) => {
-        if (!user) return;
-
-        const userChatsRef = ref(rtdb, `user_chats/${user.uid}`);
-        onValue(userChatsRef, (snapshot) => {
-            chatList.innerHTML = '';
-            if (!snapshot.exists()) {
-                chatList.innerHTML = '<div class="empty-state">No conversations yet</div>';
-                return;
-            }
-
-            snapshot.forEach((child) => {
-                const chat = child.val();
-                const item = createChatListItem(chat);
-                chatList.appendChild(item);
-
-                item.onclick = () => openChat(chat);
-            });
-        });
-    };
-
-    auth.onAuthStateChanged(handleAuth);
+    document.getElementById('chat-send-btn')?.addEventListener('click', sendMessage);
+    document.getElementById('chat-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') sendMessage();
+    });
 }
 
-function createChatListItem(chat) {
+export function loadChatList() {
+    const user = auth.currentUser;
+    const chatList = document.getElementById('chat-list');
+    if (!user || !chatList) return;
+
+    chatList.innerHTML = '<div style="padding:20px;color:#9CA3AF;text-align:center;font-size:13px">Loading...</div>';
+
+    // ✅ Mobile structure: user_chats/${uid}/${chatId}
+    const chatsRef = ref(rtdb, `user_chats/${user.uid}`);
+    onValue(chatsRef, snapshot => {
+        chatList.innerHTML = '';
+        let found = false;
+
+        if (snapshot.exists()) {
+            // Sort by timestamp descending
+            const chatPreviews = [];
+            snapshot.forEach(child => {
+                chatPreviews.push({ id: child.key, ...child.val() });
+            });
+            chatPreviews.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            chatPreviews.forEach(meta => {
+                found = true;
+                chatList.appendChild(createChatItem(meta.id, meta, user.uid));
+            });
+        }
+
+        if (!found) {
+            chatList.innerHTML = `
+                <div class="empty-state" style="padding:40px 20px">
+                    <div class="empty-emoji">💬</div>
+                    <p>No messages yet</p>
+                    <small>Claim food to start a conversation</small>
+                </div>`;
+        }
+    });
+}
+
+function createChatItem(chatId, meta, myUid) {
     const item = document.createElement('div');
     item.className = 'chat-item';
+    const name = meta.otherUserName || 'ShareBite User';
+    const initial = name.charAt(0).toUpperCase();
     item.innerHTML = `
-        <div class="avatar">${chat.otherUserName.charAt(0)}</div>
-        <div class="chat-item-info">
-            <div class="chat-item-header">
-                <span class="name">${chat.otherUserName}</span>
-                <span class="time">${new Date(chat.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-            <p class="last-msg">${chat.lastMessage}</p>
-            <span class="food-tag">${chat.foodName}</span>
+        <div class="chat-avatar">${initial}</div>
+        <div class="chat-info">
+            <p class="chat-name">${name}</p>
+            <p class="chat-food-ref">Regarding: ${meta.foodName || 'Food'}</p>
+            <p class="chat-last">${meta.lastMessage || 'Start the conversation...'}</p>
         </div>
-    `;
+        <span class="chat-time">${formatTime(meta.timestamp)}</span>`;
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+        openChat(chatId, name, meta.otherUserId, meta.foodName);
+    });
     return item;
 }
 
-function openChat(chat) {
-    const chatWindow = document.getElementById('chat-window');
-    chatWindow.innerHTML = `
+function openChat(chatId, partnerName, otherUserId, foodName) {
+    currentChatId = chatId;
+    const detailPanel = document.getElementById('chat-detail-panel');
+
+    detailPanel.innerHTML = `
         <div class="chat-header">
-            <div class="user-info">
-                <div class="avatar">${chat.otherUserName.charAt(0)}</div>
-                <div>
-                    <h4>${chat.otherUserName}</h4>
-                    <span class="subtext">Regarding: ${chat.foodName}</span>
-                </div>
+            <div class="chat-avatar" style="width:38px;height:38px;font-size:15px">${partnerName.charAt(0).toUpperCase()}</div>
+            <div class="chat-header-info">
+                <p class="chat-partner-name">${partnerName}</p>
+                <p class="chat-food-ref">Regarding: ${foodName || 'Food'}</p>
             </div>
         </div>
-        <div id="messages-container" class="messages-container"></div>
-        <form id="message-form" class="message-input-area">
-            <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off">
-            <button type="submit" class="btn-send"><i data-lucide="send"></i></button>
-        </form>
-    `;
-    lucide.createIcons();
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-row">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Type a message...">
+            <button class="chat-send-btn" id="chat-send-btn" data-other-id="${otherUserId}" data-food="${foodName}" data-other-name="${partnerName}">➤</button>
+        </div>`;
 
-    const msgContainer = document.getElementById('messages-container');
-    const msgForm = document.getElementById('message-form');
-    const msgInput = document.getElementById('msg-input');
-
-    // Subscribe to messages
-    const messagesRef = ref(rtdb, `chats/${chat.chatId}`);
-    onValue(messagesRef, (snapshot) => {
-        msgContainer.innerHTML = '';
-        snapshot.forEach((child) => {
-            const msg = child.val();
-            const msgEl = document.createElement('div');
-            msgEl.className = `message ${msg.senderId === auth.currentUser.uid ? 'sent' : 'received'}`;
-            msgEl.innerHTML = `
-                <div class="msg-content">${msg.message}</div>
-                <div class="msg-time">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-            `;
-            msgContainer.appendChild(msgEl);
-        });
-        msgContainer.scrollTop = msgContainer.scrollHeight;
+    // Re-bind send
+    document.getElementById('chat-send-btn')?.addEventListener('click', sendMessage);
+    document.getElementById('chat-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') sendMessage();
     });
 
-    msgForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const text = msgInput.value.trim();
-        if (!text) return;
+    // Unsubscribe previous listener
+    if (messagesUnsub) messagesUnsub();
 
-        const myUid = auth.currentUser.uid;
-        const myName = auth.currentUser.displayName || auth.currentUser.email.split('@')[0];
+    // ✅ Mobile structure: chats/${chatId}/${msgId} (no /messages subnode)
+    const msgsRef = ref(rtdb, `chats/${chatId}`);
+    messagesUnsub = onValue(msgsRef, snapshot => {
+        const msgsDiv = document.getElementById('chat-messages');
+        if (!msgsDiv) return;
+        msgsDiv.innerHTML = '';
+        if (!snapshot.exists()) {
+            msgsDiv.innerHTML = '<div style="text-align:center;color:#9CA3AF;padding:40px;font-size:13px">Send a message to start the conversation 👋</div>';
+            return;
+        }
 
-        const newMsgRef = push(ref(rtdb, `chats/${chat.chatId}`));
+        const msgs = [];
+        snapshot.forEach(child => {
+            const data = child.val();
+            if (data.message || data.text) { // Support both 'message' (mobile) and 'text' (web)
+                msgs.push(data);
+            }
+        });
+
+        msgs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+        msgs.forEach(msg => {
+            const isSent = msg.senderId === auth.currentUser?.uid;
+            const bubble = document.createElement('div');
+            bubble.className = `msg-bubble ${isSent ? 'sent' : 'received'}`;
+            bubble.innerHTML = `${msg.message || msg.text}<div class="msg-time">${formatTime(msg.timestamp)}</div>`;
+            msgsDiv.appendChild(bubble);
+        });
+        msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    });
+}
+
+async function sendMessage() {
+    const user = auth.currentUser;
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send-btn');
+    const text = input?.value.trim();
+    if (!user || !text || !currentChatId) return;
+
+    const otherUserId = sendBtn.dataset.otherId;
+    const foodName = sendBtn.dataset.food;
+    const otherName = sendBtn.dataset.otherName;
+    const myName = user.displayName || user.email?.split('@')[0] || 'User';
+
+    input.value = '';
+    try {
         const now = Date.now();
+        const msgRef = ref(rtdb, `chats/${currentChatId}`);
+        const newMsgRef = push(msgRef);
 
-        const messageData = {
+        // ✅ Message structure: message, senderId, senderName, timestamp
+        const msgData = {
             messageId: newMsgRef.key,
-            senderId: myUid,
+            senderId: user.uid,
             senderName: myName,
             message: text,
             timestamp: now
         };
 
-        await set(newMsgRef, messageData);
+        await set(newMsgRef, msgData);
 
-        // Update previews for both users
-        const previewData = {
-            chatId: chat.chatId,
-            otherUserId: chat.otherUserId,
-            otherUserName: chat.otherUserName,
-            foodName: chat.foodName,
+        // ✅ Update user_chats previews for both (real-time sync)
+        const myPreviewRef = ref(rtdb, `user_chats/${user.uid}/${currentChatId}`);
+        const otherPreviewRef = ref(rtdb, `user_chats/${otherUserId}/${currentChatId}`);
+
+        const myPreviewData = {
+            chatId: currentChatId,
+            otherUserId: otherUserId,
+            otherUserName: otherName,
+            foodName: foodName,
             lastMessage: text,
             timestamp: now
         };
 
-        const myPreviewPath = `user_chats/${myUid}/${chat.chatId}`;
-        const otherPreviewPath = `user_chats/${chat.otherUserId}/${chat.chatId}`;
+        const otherPreviewData = {
+            chatId: currentChatId,
+            otherUserId: user.uid,
+            otherUserName: myName,
+            foodName: foodName,
+            lastMessage: text,
+            timestamp: now
+        };
 
-        await set(ref(rtdb, myPreviewPath), previewData);
-        await set(ref(rtdb, otherPreviewPath), {
-            ...previewData,
-            otherUserId: myUid,
-            otherUserName: myName
-        });
+        await set(myPreviewRef, myPreviewData);
+        if (otherUserId) {
+            await set(otherPreviewRef, otherPreviewData);
+        }
 
-        msgInput.value = '';
-    };
-
-    // Re-bind submit (fix for dynamic innerHTML)
-    msgForm.addEventListener('submit', msgForm.onsubmit);
+    } catch (err) {
+        console.error("SendMessage Error:", err);
+        window.showToast?.('Failed to send message', 'error');
+    }
 }
 
-// Global function to start chat from feed
-window.startChat = (otherUid, otherName, foodName) => {
-    const user = auth.currentUser;
-    if (!user) return showToast("Please login", "error");
-    if (user.uid === otherUid) return showToast("You shared this!", "info");
+function formatTime(ts) {
+    if (!ts) return '';
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 
-    const chatId = [user.uid, otherUid].sort().join("_") + "_" + foodName.replace(/\s+/g, '').toLowerCase();
-
-    const chat = {
-        chatId,
-        otherUserId: otherUid,
-        otherUserName: otherName,
-        foodName,
-        lastMessage: "Started a conversation...",
-        timestamp: Date.now()
-    };
-
-    navigateTo('chat');
-    setTimeout(() => openChat(chat), 100);
-};
-
-import { navigateTo, showToast } from "./app.js";
-window.loadChat = initChat;
+window.loadChatList = loadChatList;
+window.openChat = openChat;
