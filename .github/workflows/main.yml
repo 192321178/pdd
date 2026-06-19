@@ -149,7 +149,16 @@ jobs:
         run: pip install openpyxl
 
       - name: Generate all 4 test reports (300 each)
-        run: python3 .github/scripts/build_reports.py test-results
+        run: |
+          if [ ! -f ".github/scripts/build_reports.py" ]; then
+            echo "❌ ERROR: .github/scripts/build_reports.py not found in repo!"
+            echo "Make sure both generate_tests.py and build_reports.py are committed"
+            echo "to .github/scripts/ in your repository root."
+            ls -la .github/scripts/ 2>&1 || echo ".github/scripts/ directory does not exist"
+            exit 1
+          fi
+          pip install openpyxl --quiet
+          python3 .github/scripts/build_reports.py test-results
 
       - name: Upload Appium Results
         uses: actions/upload-artifact@v4
@@ -189,7 +198,16 @@ jobs:
         run: pip install openpyxl
 
       - name: Generate all 4 test reports (300 each)
-        run: python3 .github/scripts/build_reports.py test-results
+        run: |
+          if [ ! -f ".github/scripts/build_reports.py" ]; then
+            echo "❌ ERROR: .github/scripts/build_reports.py not found in repo!"
+            echo "Make sure both generate_tests.py and build_reports.py are committed"
+            echo "to .github/scripts/ in your repository root."
+            ls -la .github/scripts/ 2>&1 || echo ".github/scripts/ directory does not exist"
+            exit 1
+          fi
+          pip install openpyxl --quiet
+          python3 .github/scripts/build_reports.py test-results
 
       - name: Upload Selenium Results
         uses: actions/upload-artifact@v4
@@ -229,7 +247,16 @@ jobs:
         run: pip install openpyxl
 
       - name: Generate all 4 test reports (300 each)
-        run: python3 .github/scripts/build_reports.py test-results
+        run: |
+          if [ ! -f ".github/scripts/build_reports.py" ]; then
+            echo "❌ ERROR: .github/scripts/build_reports.py not found in repo!"
+            echo "Make sure both generate_tests.py and build_reports.py are committed"
+            echo "to .github/scripts/ in your repository root."
+            ls -la .github/scripts/ 2>&1 || echo ".github/scripts/ directory does not exist"
+            exit 1
+          fi
+          pip install openpyxl --quiet
+          python3 .github/scripts/build_reports.py test-results
 
       - name: Upload Vulnerability Results
         uses: actions/upload-artifact@v4
@@ -270,7 +297,16 @@ jobs:
         run: pip install openpyxl
 
       - name: Generate all 4 test reports (300 each)
-        run: python3 .github/scripts/build_reports.py test-results
+        run: |
+          if [ ! -f ".github/scripts/build_reports.py" ]; then
+            echo "❌ ERROR: .github/scripts/build_reports.py not found in repo!"
+            echo "Make sure both generate_tests.py and build_reports.py are committed"
+            echo "to .github/scripts/ in your repository root."
+            ls -la .github/scripts/ 2>&1 || echo ".github/scripts/ directory does not exist"
+            exit 1
+          fi
+          pip install openpyxl --quiet
+          python3 .github/scripts/build_reports.py test-results
 
       - name: Upload Combined Report
         uses: actions/upload-artifact@v4
