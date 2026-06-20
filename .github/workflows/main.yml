@@ -303,7 +303,7 @@ jobs:
     if: always()
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://192321178.github.io/pdd/
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
