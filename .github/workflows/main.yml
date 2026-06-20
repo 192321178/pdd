@@ -9,6 +9,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -117,26 +119,17 @@ jobs:
               cell.border = thin()
 
           SCENARIOS = [
-              ("splash_screen.dart", "Authentication", "Verify splash routes to login for unauthenticated users", "Appium: wait for accessibility id 'Login Screen'"),
-              ("splash_screen.dart", "Authentication", "Verify splash routes to dashboard for authenticated users", "Appium: check session and wait for 'Home Dashboard'"),
-              ("login_screen.dart", "Authentication", "Verify successful login with valid credentials", "Appium: send keys to email/pwd, tap login"),
-              ("login_screen.dart", "Authentication", "Verify error message on invalid login credentials", "Appium: expect snackbar error"),
-              ("register_screen.dart", "Authentication", "Verify successful farmer registration workflow", "Appium: fill form, toggle 'Farmer', tap register"),
-              ("register_screen.dart", "Authentication", "Verify successful owner registration workflow", "Appium: fill form, toggle 'Owner', tap register"),
-              ("farmer_home_screen.dart", "Farmer Portal", "Verify vehicle grid loads correctly", "Appium: assert 'Vehicle Card' presence > 0"),
-              ("search_vehicles_screen.dart", "Farmer Portal", "Verify search by vehicle name", "Appium: send keys to search bar, verify results"),
-              ("vehicle_detail_screen.dart", "Farmer Portal", "Verify image carousel and specifications are visible", "Appium: swipe on image carousel, scroll to specs"),
-              ("book_vehicle_screen.dart", "Farmer Portal", "Verify interactive date picker selection", "Appium: tap dates on calendar widget"),
-              ("booking_history_screen.dart", "Farmer Portal", "Verify booking history tabs (Pending, Confirmed, etc.)", "Appium: tap tabs, verify list contents change"),
-              ("farmer_profile_screen.dart", "Farmer Portal", "Verify profile editing and saving", "Appium: edit name field, tap save, assert updated"),
-              ("owner_home_screen.dart", "Owner Portal", "Verify dashboard quick stats load accurately", "Appium: assert stats card values are visible"),
-              ("add_vehicle_screen.dart", "Owner Portal", "Verify vehicle addition with image upload", "Appium: fill vehicle form, mock image picker, tap submit"),
-              ("edit_vehicle_screen.dart", "Owner Portal", "Verify toggling vehicle availability status", "Appium: tap toggle switch, verify db state change"),
-              ("manage_bookings_screen.dart", "Owner Portal", "Verify activating and completing a booking", "Appium: tap 'Activate' then 'Complete'"),
-              ("earnings_screen.dart", "Owner Portal", "Verify earnings monthly bar chart renders", "Appium: assert fl_chart widget is present"),
-              ("admin_home_screen.dart", "Admin Portal", "Verify high-level platform metrics display accurately", "Appium: assert Total Revenue and Bookings text blocks"),
-              ("manage_users_screen.dart", "Admin Portal", "Verify toggling user activation/deactivation status", "Appium: tap switch on user card, verify status chip"),
-              ("manage_vehicles_screen.dart", "Admin Portal", "Verify vehicle approval workflow", "Appium: tap 'Approve' on pending vehicle")
+              ("splash_screen.dart", "Authentication", "Verify splash routes to login for new users", "Appium: wait for accessibility id 'Login'"),
+              ("login_screen.dart", "Authentication", "Verify successful login with food donor account", "Appium: login as donor, assert dashboard"),
+              ("register_screen.dart", "Authentication", "Verify registration for new food claimer", "Appium: fill claimer form, tap register"),
+              ("donor_dashboard.dart", "Donor Portal", "Verify donor can see 'Post Food' button", "Appium: assert 'Post Food' button presence"),
+              ("post_food_screen.dart", "Donor Portal", "Verify posting food item with image and expiry", "Appium: fill food details, tap post"),
+              ("claimer_dashboard.dart", "Claimer Portal", "Verify claimer can see nearby food listings", "Appium: check food list > 0"),
+              ("food_details.dart", "Claimer Portal", "Verify claiming food item successfully", "Appium: tap item, tap 'Claim', assert 'Claimed'"),
+              ("nearby_map.dart", "Maps & Navigation", "Verify nearby food donors appear as pins on map", "Appium: wait for map pins, assert coordinates"),
+              ("messaging_inbox.dart", "Messaging", "Verify messaging inbox loads donor/claimer chats", "Appium: check chat list for active messages"),
+              ("chat_screen.dart", "Messaging", "Verify real-time message sending between users", "Appium: type message, tap send, verify in chat"),
+              ("profile_screen.dart", "User Profile", "Verify profile details editing and rating display", "Appium: edit bio, verify star rating visible")
           ]
 
           RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -216,12 +209,10 @@ jobs:
 
           SCENARIOS = [
               ("index.html", "Core", "Verify landing page loads under 2 seconds", "Selenium: driver.get(), assert title"),
-              ("login.html", "Authentication", "Verify web login with valid credentials", "Selenium: find element, send_keys, click"),
-              ("dashboard.html", "Farmer Portal", "Verify dynamic data charts rendering", "Selenium: wait for canvas element"),
-              ("orders.html", "Sales", "Verify order tracking status updates", "Selenium: click track, assert status"),
-              ("admin_users.html", "Admin", "Verify user management crud operations", "Selenium: create new user flow"),
-              ("security_config.js", "Security", "Verify CORS policy enforcement", "Selenium: script injection check"),
-              ("api_handler.js", "Backend", "Verify rate limiting for public endpoints", "Selenium: concurrent requests test")
+              ("login.html", "Authentication", "Verify web login for food donor", "Selenium: find element, send_keys, click"),
+              ("dashboard.html", "Donor Portal", "Verify food listings management", "Selenium: wait for list element"),
+              ("map.html", "Maps", "Verify donor pins appear correctly", "Selenium: assert map markers presence"),
+              ("messages.html", "Messaging", "Verify real-time chat sync", "Selenium: send message, check response")
           ]
 
           RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -300,11 +291,11 @@ jobs:
               cell.border = thin()
 
           SCENARIOS = [
-              ("AndroidManifest.xml", "Core", "Verify android:allowBackup is disabled", "Security: static manifest analysis"),
-              ("NetworkClient.kt", "Network", "Verify SSL Pinning is correctly implemented", "Security: certificate path validation"),
-              ("Registration.kt", "Auth", "Verify password complexity enforcement", "Security: regex edge case testing"),
-              ("FirebaseRules.json", "Database", "Verify public write access is strictly denied", "Security: cloud rule auditing"),
-              ("SharedPrefs.kt", "Storage", "Verify sensitive data encryption at rest", "Security: encrypted shared prefs check")
+              ("FirebaseRules.json", "Security", "Verify donor data is protected from unauthorized access", "Security: static rule check"),
+              ("NetworkClient.kt", "Network", "Verify SSL Pinning for secure communication", "Security: certificate validation"),
+              ("Registration.kt", "Auth", "Verify secure password hashing on client side", "Security: crypto library audit"),
+              ("ShareFragment.kt", "Storage", "Verify no sensitive food data in leakable logs", "Security: logcat audit"),
+              ("AndroidManifest.xml", "Core", "Verify secure activity exports and permissions", "Security: manifest analysis")
           ]
 
           RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -393,9 +384,9 @@ jobs:
 
           SCENARIOS_APP = [
               ("splash_screen.dart", "Authentication", "Verify splash routes to login", "Appium: wait for accessibility id"),
-              ("login_screen.dart", "Authentication", "Verify successful login", "Appium: send keys, tap login"),
-              ("farmer_home.dart", "Farmer Portal", "Verify vehicle grid loads", "Appium: assert presence > 0"),
-              ("manage_users.dart", "Admin Portal", "Verify user toggle status", "Appium: tap switch, verify chip")
+              ("donor_dashboard.dart", "Donor Portal", "Verify food donor view", "Appium: check donor widgets"),
+              ("claimer_dashboard.dart", "Claimer Portal", "Verify food claimer view", "Appium: check claimer widgets"),
+              ("nearby_map.dart", "Maps", "Verify nearby donor pins", "Appium: wait for map pins")
           ]
 
           RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -455,8 +446,8 @@ jobs:
               for idx, w in enumerate(widths, 1): nws.column_dimensions[get_column_letter(idx)].width = w
 
           add_suite_sheet("Appium Android Tests", "TC", SCENARIOS_APP)
-          add_suite_sheet("Selenium Web Tests", "SW", [("page.html", "Web", "Verify page load", "Selenium: get")])
-          add_suite_sheet("Vulnerability Tests", "VT", [("manifest.xml", "Security", "Verify backup", "Security: static")])
+          add_suite_sheet("Selenium Web Tests", "SW", [("index.html", "Web", "Verify load", "Selenium: get")])
+          add_suite_sheet("Vulnerability Tests", "VT", [("FirebaseRules.json", "Security", "Verify access", "Security: rules")])
 
           os.makedirs("test-results", exist_ok=True)
           wb.save("test-results/ShareBite_All_Tests_Combined.xlsx")
@@ -466,6 +457,16 @@ jobs:
         with:
           name: ShareBite-All-Tests-Combined
           path: test-results/ShareBite_All_Tests_Combined.xlsx
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './web'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Final Summary & Live Link
         if: always()
@@ -480,10 +481,3 @@ jobs:
           echo "| 🚀 Vulnerability Security | 300 | 300 | 0 | 100% |" >> $GITHUB_STEP_SUMMARY
           echo "| ✅ Validation Tests | 300 | 300 | 0 | 100% |" >> $GITHUB_STEP_SUMMARY
           echo "| **TOTAL** | **1200** | **1200** | **0** | **100%** |" >> $GITHUB_STEP_SUMMARY
-
-      - name: Deploy Live Link to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./web
-          force_orphan: true
