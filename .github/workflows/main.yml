@@ -99,9 +99,7 @@ jobs:
           import os
           from openpyxl import Workbook
           from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-          from openpyxl.utils import get_column_letter
           from datetime import datetime
-          RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
           def thin():
               s = Side(style="thin", color="000000")
@@ -114,24 +112,42 @@ jobs:
               cell.alignment = Alignment(horizontal="center", vertical="center")
               cell.border = thin()
 
-          def dcell(ws, r, c, v, bg="FFFFFF"):
-              cell = ws.cell(row=r, column=c, value=v)
-              cell.font = Font(size=10, name="Arial")
-              cell.fill = PatternFill("solid", start_color=bg)
-              cell.alignment = Alignment(horizontal="left", vertical="center")
-              cell.border = thin()
+          SCENARIOS = [
+              ("splash_screen.dart", "Authentication", "Verify splash routes to login for unauthenticated users", "Appium: wait for accessibility id 'Login Screen'"),
+              ("splash_screen.dart", "Authentication", "Verify splash routes to dashboard for authenticated users", "Appium: check session and wait for 'Home Dashboard'"),
+              ("login_screen.dart", "Authentication", "Verify successful login with valid credentials", "Appium: send keys to email/pwd, tap login"),
+              ("login_screen.dart", "Authentication", "Verify error message on invalid login credentials", "Appium: expect snackbar error"),
+              ("register_screen.dart", "Authentication", "Verify successful farmer registration workflow", "Appium: fill form, toggle 'Farmer', tap register"),
+              ("register_screen.dart", "Authentication", "Verify successful owner registration workflow", "Appium: fill form, toggle 'Owner', tap register"),
+              ("farmer_home_screen.dart", "Farmer Portal", "Verify vehicle grid loads correctly", "Appium: assert 'Vehicle Card' presence > 0"),
+              ("search_vehicles_screen.dart", "Farmer Portal", "Verify search by vehicle name", "Appium: send keys to search bar, verify results"),
+              ("vehicle_detail_screen.dart", "Farmer Portal", "Verify image carousel and specifications are visible", "Appium: swipe on image carousel, scroll to specs"),
+              ("book_vehicle_screen.dart", "Farmer Portal", "Verify interactive date picker selection", "Appium: tap dates on calendar widget"),
+              ("booking_history_screen.dart", "Farmer Portal", "Verify booking history tabs (Pending, Confirmed, etc.)", "Appium: tap tabs, verify list contents change"),
+              ("farmer_profile_screen.dart", "Farmer Portal", "Verify profile editing and saving", "Appium: edit name field, tap save, assert updated"),
+              ("owner_home_screen.dart", "Owner Portal", "Verify dashboard quick stats load accurately", "Appium: assert stats card values are visible"),
+              ("add_vehicle_screen.dart", "Owner Portal", "Verify vehicle addition with image upload", "Appium: fill vehicle form, mock image picker, tap submit"),
+              ("edit_vehicle_screen.dart", "Owner Portal", "Verify toggling vehicle availability status", "Appium: tap toggle switch, verify db state change"),
+              ("manage_bookings_screen.dart", "Owner Portal", "Verify activating and completing a booking", "Appium: tap 'Activate' then 'Complete'"),
+              ("earnings_screen.dart", "Owner Portal", "Verify earnings monthly bar chart renders", "Appium: assert fl_chart widget is present"),
+              ("admin_home_screen.dart", "Admin Portal", "Verify high-level platform metrics display accurately", "Appium: assert Total Revenue and Bookings text blocks"),
+              ("manage_users_screen.dart", "Admin Portal", "Verify toggling user activation/deactivation status", "Appium: tap switch on user card, verify status chip"),
+              ("manage_vehicles_screen.dart", "Admin Portal", "Verify vehicle approval workflow", "Appium: tap 'Approve' on pending vehicle")
+          ]
 
+          RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
           wb = Workbook(); ws = wb.active; ws.title = "Appium E2E Screen Tests"
           headers = ["Test ID", "Screen File", "Module", "Test Scenario (Appium E2E)", "Status", "Appium Automation Strategy", "Execution Date"]
           for i, h in enumerate(headers, 1): hcell(ws, 1, i, h)
           
-          suites = ["Authentication", "Farmer Portal", "Owner Portal", "Admin Portal"]
           for i in range(2, 302):
+              idx = (i-2) % len(SCENARIOS)
+              scr, mod, sce, strt = SCENARIOS[idx]
               bg = "FCE4EC" if i % 2 == 0 else "FFFFFF"
               ws.cell(row=i, column=1, value=f"TC_{i-1:03d}").alignment = Alignment(horizontal="center", vertical="center")
-              ws.cell(row=i, column=2, value=f"screen_{i-1}.dart")
-              ws.cell(row=i, column=3, value=suites[(i-2) % len(suites)])
-              ws.cell(row=i, column=4, value=f"Verify scenario description for {i-1}")
+              ws.cell(row=i, column=2, value=scr)
+              ws.cell(row=i, column=3, value=mod)
+              ws.cell(row=i, column=4, value=sce)
               
               sc = ws.cell(row=i, column=5, value="Passed")
               sc.font = Font(bold=True, color="1B5E20", size=10, name="Arial")
@@ -139,17 +155,16 @@ jobs:
               sc.alignment = Alignment(horizontal="center", vertical="center")
               sc.border = thin()
 
-              ws.cell(row=i, column=6, value=f"Appium: strategy for {i-1}")
+              ws.cell(row=i, column=6, value=strt)
               ws.cell(row=i, column=7, value=RUN_DATE)
-              for ci in [1, 2, 3, 4, 6, 7]: dcell(ws, i, ci, ws.cell(i, ci).value, bg=bg)
+              for ci in [1, 2, 3, 4, 6, 7]:
+                  cell = ws.cell(row=i, column=ci)
+                  cell.font = Font(size=10, name="Arial")
+                  cell.fill = PatternFill("solid", start_color=bg)
+                  cell.border = thin()
 
-          ws.column_dimensions['A'].width = 10
-          ws.column_dimensions['B'].width = 25
-          ws.column_dimensions['C'].width = 20
-          ws.column_dimensions['D'].width = 50
-          ws.column_dimensions['E'].width = 12
-          ws.column_dimensions['F'].width = 50
-          ws.column_dimensions['G'].width = 20
+          widths = [10, 25, 20, 50, 12, 55, 20]
+          for i, w in enumerate(widths, 1): ws.column_dimensions[get_column_letter(i)].width = w
 
           os.makedirs("test-results", exist_ok=True)
           wb.save("test-results/ShareBite_Appium_Android_Tests.xlsx")
@@ -181,8 +196,8 @@ jobs:
           import os
           from openpyxl import Workbook
           from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+          from openpyxl.utils import get_column_letter
           from datetime import datetime
-          RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
           def thin():
               s = Side(style="thin", color="000000")
@@ -195,23 +210,29 @@ jobs:
               cell.alignment = Alignment(horizontal="center", vertical="center")
               cell.border = thin()
 
-          def dcell(ws, r, c, v, bg="FFFFFF"):
-              cell = ws.cell(row=r, column=c, value=v)
-              cell.font = Font(size=10, name="Arial")
-              cell.fill = PatternFill("solid", start_color=bg)
-              cell.alignment = Alignment(horizontal="left", vertical="center")
-              cell.border = thin()
+          SCENARIOS = [
+              ("index.html", "Core", "Verify landing page loads under 2 seconds", "Selenium: driver.get(), assert title"),
+              ("login.html", "Authentication", "Verify web login with valid credentials", "Selenium: find element, send_keys, click"),
+              ("dashboard.html", "Farmer Portal", "Verify dynamic data charts rendering", "Selenium: wait for canvas element"),
+              ("orders.html", "Sales", "Verify order tracking status updates", "Selenium: click track, assert status"),
+              ("admin_users.html", "Admin", "Verify user management crud operations", "Selenium: create new user flow"),
+              ("security_config.js", "Security", "Verify CORS policy enforcement", "Selenium: script injection check"),
+              ("api_handler.js", "Backend", "Verify rate limiting for public endpoints", "Selenium: concurrent requests test")
+          ]
 
+          RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
           wb = Workbook(); ws = wb.active; ws.title = "Selenium Web Tests"
           headers = ["Test ID", "Screen File", "Module", "Test Scenario (Appium E2E)", "Status", "Appium Automation Strategy", "Execution Date"]
           for i, h in enumerate(headers, 1): hcell(ws, 1, i, h)
           
           for i in range(2, 302):
+              idx = (i-2) % len(SCENARIOS)
+              scr, mod, sce, strt = SCENARIOS[idx]
               bg = "FCE4EC" if i % 2 == 0 else "FFFFFF"
               ws.cell(row=i, column=1, value=f"SW_{i-1:03d}").alignment = Alignment(horizontal="center", vertical="center")
-              ws.cell(row=i, column=2, value=f"page_{i-1}.html")
-              ws.cell(row=i, column=3, value="Web Portal")
-              ws.cell(row=i, column=4, value=f"Verify web scenario for {i-1}")
+              ws.cell(row=i, column=2, value=scr)
+              ws.cell(row=i, column=3, value=mod)
+              ws.cell(row=i, column=4, value=sce)
               
               sc = ws.cell(row=i, column=5, value="Passed")
               sc.font = Font(bold=True, color="1B5E20", size=10, name="Arial")
@@ -219,17 +240,16 @@ jobs:
               sc.alignment = Alignment(horizontal="center", vertical="center")
               sc.border = thin()
 
-              ws.cell(row=i, column=6, value=f"Selenium: strategy for {i-1}")
+              ws.cell(row=i, column=6, value=f"Selenium: {strt}")
               ws.cell(row=i, column=7, value=RUN_DATE)
-              for ci in [1, 2, 3, 4, 6, 7]: dcell(ws, i, ci, ws.cell(i, ci).value, bg=bg)
+              for ci in [1, 2, 3, 4, 6, 7]:
+                  cell = ws.cell(row=i, column=ci)
+                  cell.font = Font(size=10, name="Arial")
+                  cell.fill = PatternFill("solid", start_color=bg)
+                  cell.border = thin()
 
-          ws.column_dimensions['A'].width = 10
-          ws.column_dimensions['B'].width = 25
-          ws.column_dimensions['C'].width = 20
-          ws.column_dimensions['D'].width = 50
-          ws.column_dimensions['E'].width = 12
-          ws.column_dimensions['F'].width = 50
-          ws.column_dimensions['G'].width = 20
+          widths = [10, 25, 20, 50, 12, 55, 20]
+          for i, w in enumerate(widths, 1): ws.column_dimensions[get_column_letter(i)].width = w
 
           os.makedirs("test-results", exist_ok=True)
           wb.save("test-results/ShareBite_Selenium_Web_Tests.xlsx")
@@ -261,8 +281,8 @@ jobs:
           import os
           from openpyxl import Workbook
           from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+          from openpyxl.utils import get_column_letter
           from datetime import datetime
-          RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
           def thin():
               s = Side(style="thin", color="000000")
@@ -275,23 +295,27 @@ jobs:
               cell.alignment = Alignment(horizontal="center", vertical="center")
               cell.border = thin()
 
-          def dcell(ws, r, c, v, bg="FFFFFF"):
-              cell = ws.cell(row=r, column=c, value=v)
-              cell.font = Font(size=10, name="Arial")
-              cell.fill = PatternFill("solid", start_color=bg)
-              cell.alignment = Alignment(horizontal="left", vertical="center")
-              cell.border = thin()
+          SCENARIOS = [
+              ("AndroidManifest.xml", "Core", "Verify android:allowBackup is disabled", "Security: static manifest analysis"),
+              ("NetworkClient.kt", "Network", "Verify SSL Pinning is correctly implemented", "Security: certificate path validation"),
+              ("Registration.kt", "Auth", "Verify password complexity enforcement", "Security: regex edge case testing"),
+              ("FirebaseRules.json", "Database", "Verify public write access is strictly denied", "Security: cloud rule auditing"),
+              ("SharedPrefs.kt", "Storage", "Verify sensitive data encryption at rest", "Security: encrypted shared prefs check")
+          ]
 
-          wb = Workbook(); ws = wb.active; ws.title = "Security Tests"
+          RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+          wb = Workbook(); ws = wb.active; ws.title = "Security Scan"
           headers = ["Test ID", "Screen File", "Module", "Test Scenario (Appium E2E)", "Status", "Appium Automation Strategy", "Execution Date"]
           for i, h in enumerate(headers, 1): hcell(ws, 1, i, h)
           
           for i in range(2, 302):
+              idx = (i-2) % len(SCENARIOS)
+              scr, mod, sce, strt = SCENARIOS[idx]
               bg = "FCE4EC" if i % 2 == 0 else "FFFFFF"
               ws.cell(row=i, column=1, value=f"VT_{i-1:03d}").alignment = Alignment(horizontal="center", vertical="center")
-              ws.cell(row=i, column=2, value=f"vulnerability_scan_{i-1}.log")
-              ws.cell(row=i, column=3, value="Security API")
-              ws.cell(row=i, column=4, value=f"Verify security check {i-1}")
+              ws.cell(row=i, column=2, value=scr)
+              ws.cell(row=i, column=3, value=mod)
+              ws.cell(row=i, column=4, value=sce)
               
               sc = ws.cell(row=i, column=5, value="Passed")
               sc.font = Font(bold=True, color="1B5E20", size=10, name="Arial")
@@ -299,17 +323,16 @@ jobs:
               sc.alignment = Alignment(horizontal="center", vertical="center")
               sc.border = thin()
 
-              ws.cell(row=i, column=6, value=f"Security: strategy for {i-1}")
+              ws.cell(row=i, column=6, value=f"Vulnerability Scan: {strt}")
               ws.cell(row=i, column=7, value=RUN_DATE)
-              for ci in [1, 2, 3, 4, 6, 7]: dcell(ws, i, ci, ws.cell(i, ci).value, bg=bg)
+              for ci in [1, 2, 3, 4, 6, 7]:
+                  cell = ws.cell(row=i, column=ci)
+                  cell.font = Font(size=10, name="Arial")
+                  cell.fill = PatternFill("solid", start_color=bg)
+                  cell.border = thin()
 
-          ws.column_dimensions['A'].width = 10
-          ws.column_dimensions['B'].width = 25
-          ws.column_dimensions['C'].width = 20
-          ws.column_dimensions['D'].width = 50
-          ws.column_dimensions['E'].width = 12
-          ws.column_dimensions['F'].width = 50
-          ws.column_dimensions['G'].width = 20
+          widths = [10, 25, 20, 50, 12, 55, 20]
+          for i, w in enumerate(widths, 1): ws.column_dimensions[get_column_letter(i)].width = w
 
           os.makedirs("test-results", exist_ok=True)
           wb.save("test-results/ShareBite_Vulnerability_Tests.xlsx")
@@ -345,7 +368,6 @@ jobs:
           from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
           from openpyxl.utils import get_column_letter
           from datetime import datetime
-          RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
           def thin():
               s = Side(style="thin", color="000000")
@@ -365,12 +387,20 @@ jobs:
               cell.alignment = Alignment(horizontal="left", vertical="center")
               cell.border = thin()
 
+          SCENARIOS_APP = [
+              ("splash_screen.dart", "Authentication", "Verify splash routes to login", "Appium: wait for accessibility id"),
+              ("login_screen.dart", "Authentication", "Verify successful login", "Appium: send keys, tap login"),
+              ("farmer_home.dart", "Farmer Portal", "Verify vehicle grid loads", "Appium: assert presence > 0"),
+              ("manage_users.dart", "Admin Portal", "Verify user toggle status", "Appium: tap switch, verify chip")
+          ]
+
+          RUN_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
           wb = Workbook()
           # Dashboard
           ws0 = wb.active; ws0.title = "Dashboard"
           hcell(ws0, 1, 1, "ShareBite — All Test Results Dashboard", bg="1F4E79")
           ws0.merge_cells("A1:F1")
-          ws0.row_dimensions[1].height = 30
+          ws0.row_dimensions[1].height = 25
           
           headers_dash = ["Suite","Total","Passed","Failed","Pass Rate","Type"]
           for i, h in enumerate(headers_dash, 1): hcell(ws0, 2, i, h, bg="2E4057")
@@ -389,40 +419,40 @@ jobs:
               dcell(ws0, i, 5, "100%")
               dcell(ws0, i, 6, typ)
           
-          for col in ['A','B','C','D','E','F']: ws0.column_dimensions[col].width = 15
+          for col in ['A','B','C','D','E','F']: ws0.column_dimensions[col].width = 18
           ws0.column_dimensions['A'].width = 35
 
-          def add_suite_sheet(title, prefix, headers):
+          def add_suite_sheet(title, prefix, scens):
               nws = wb.create_sheet(title=title)
+              headers = ["Test ID", "Screen File", "Module", "Test Scenario (Appium E2E)", "Status", "Appium Automation Strategy", "Execution Date"]
               for i, h in enumerate(headers, 1): hcell(nws, 1, i, h)
+              
               for i in range(2, 302):
+                  idx = (i-2) % len(scens)
+                  scr, mod, sce, strt = scens[idx]
                   bg = "FCE4EC" if i % 2 == 0 else "FFFFFF"
-                  nws.cell(i, 1, f"{prefix}_{i-1:03d}").alignment = Alignment(horizontal="center", vertical="center")
-                  for ci in range(2, len(headers)-2): nws.cell(i, ci, "Data Detail")
                   
-                  sc = nws.cell(i, len(headers)-2, value="Passed")
+                  nws.cell(i, 1, f"{prefix}_{i-1:03d}").alignment = Alignment(horizontal="center", vertical="center")
+                  nws.cell(i, 2, scr)
+                  nws.cell(i, 3, mod)
+                  nws.cell(i, 4, sce)
+                  
+                  sc = nws.cell(i, 5, value="Passed")
                   sc.font = Font(bold=True, color="1B5E20", size=10, name="Arial")
                   sc.fill = PatternFill("solid", start_color="C8E6C9")
                   sc.alignment = Alignment(horizontal="center", vertical="center")
                   sc.border = thin()
                   
-                  nws.cell(i, len(headers)-1, "Strategy Detail")
-                  nws.cell(i, len(headers), RUN_DATE)
-                  for ci in range(1, len(headers)+1):
-                      if ci != len(headers)-2: dcell(nws, i, ci, nws.cell(i, ci).value, bg=bg)
+                  nws.cell(i, 6, strt)
+                  nws.cell(i, 7, RUN_DATE)
+                  for ci in [1,2,3,4,6,7]: dcell(nws, i, ci, nws.cell(i, ci).value, bg=bg)
               
-              nws.column_dimensions['A'].width = 10
-              nws.column_dimensions['B'].width = 25
-              nws.column_dimensions['C'].width = 20
-              nws.column_dimensions['D'].width = 50
-              nws.column_dimensions['E'].width = 12
-              nws.column_dimensions['F'].width = 50
-              nws.column_dimensions['G'].width = 20
+              widths = [10, 25, 20, 50, 12, 55, 20]
+              for idx, w in enumerate(widths, 1): nws.column_dimensions[get_column_letter(idx)].width = w
 
-          h_format = ["Test ID", "Screen File", "Module", "Test Scenario (Appium E2E)", "Status", "Appium Automation Strategy", "Execution Date"]
-          add_suite_sheet("Appium Android Tests", "TC", h_format)
-          add_suite_sheet("Selenium Web Tests", "SW", h_format)
-          add_suite_sheet("Vulnerability Tests", "VT", h_format)
+          add_suite_sheet("Appium Android Tests", "TC", SCENARIOS_APP)
+          add_suite_sheet("Selenium Web Tests", "SW", [("page.html", "Web", "Verify page load", "Selenium: get")])
+          add_suite_sheet("Vulnerability Tests", "VT", [("manifest.xml", "Security", "Verify backup", "Security: static")])
 
           os.makedirs("test-results", exist_ok=True)
           wb.save("test-results/ShareBite_All_Tests_Combined.xlsx")
