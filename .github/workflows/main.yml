@@ -146,6 +146,7 @@ jobs:
                   ws.cell(row=i, column=cIdx).border = thin()
                   ws.cell(row=i, column=cIdx).fill = PatternFill("solid", start_color=bg)
 
+          os.makedirs("test-results", exist_ok=True)
           wb.save("test-results/ShareBite_Appium_Android_Tests.xlsx")
           PYEOF
       - name: Upload Results
@@ -214,6 +215,7 @@ jobs:
                   ws.cell(row=i, column=cIdx).border = thin()
                   ws.cell(row=i, column=cIdx).fill = PatternFill("solid", start_color=bg)
 
+          os.makedirs("test-results", exist_ok=True)
           wb.save("test-results/ShareBite_Selenium_Web_Tests.xlsx")
           PYEOF
       - name: Upload Results
@@ -282,6 +284,7 @@ jobs:
                   ws.cell(row=i, column=cIdx).border = thin()
                   ws.cell(row=i, column=cIdx).fill = PatternFill("solid", start_color=bg)
 
+          os.makedirs("test-results", exist_ok=True)
           wb.save("test-results/ShareBite_Vulnerability_Tests.xlsx")
           PYEOF
       - name: Upload Results
