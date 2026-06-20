@@ -13,22 +13,17 @@ export function navigateTo(screenId) {
     const detailOverlay = document.getElementById('food-detail');
 
     if (screenId === 'food-detail') {
-        // Show full-screen overlay, keep main app behind it
         if (detailOverlay) detailOverlay.style.display = 'block';
         return;
     }
 
-    // Hide detail overlay when navigating anywhere else
     if (detailOverlay) detailOverlay.style.display = 'none';
 
-    // Hide all pages
+    // Update screen visibility
     SCREENS.forEach(id => {
         const el = document.getElementById(`${id}-screen`);
         if (el) el.classList.remove('active');
     });
-
-    // Deactivate all nav buttons
-    document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
 
     const target = document.getElementById(`${screenId}-screen`);
     if (target) {
@@ -36,34 +31,30 @@ export function navigateTo(screenId) {
         target.scrollTop = 0;
     }
 
-    const navBtn = document.getElementById(`nav-${screenId}`);
-    if (navBtn) navBtn.classList.add('active');
+    // Update Bottom Nav
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navItem = document.getElementById(`nav-${screenId}`);
+    if (navItem) navItem.classList.add('active');
 
-    // Trigger map init when switching to map
-    if (screenId === 'map') {
-        setTimeout(() => window.loadMap?.(), 100);
-    }
-    // Reload chat list when switching to messages
-    if (screenId === 'messages') {
-        window.loadChatList?.();
-    }
-    // Reload profile when switching
-    if (screenId === 'profile') {
-        window.loadProfile?.();
-    }
+    // Module-specific reloads
+    if (screenId === 'map') setTimeout(() => window.loadMap?.(), 200);
+    if (screenId === 'messages') window.loadChatList?.();
+    if (screenId === 'profile') window.loadProfile?.();
 }
 
-// Global Toast
 export function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
+    toast.style.cssText = "background:rgba(0,0,0,0.8); color:#fff; padding:12px 24px; border-radius:24px; margin-bottom:12px; font-size:14px; font-weight:600; opacity:0; transform:translateY(10px); transition:0.3s; pointer-events:auto;";
     toast.textContent = message;
     container.appendChild(toast);
+
     requestAnimationFrame(() => {
         toast.style.opacity = '1';
         toast.style.transform = 'translateY(0)';
     });
+
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(10px)';
@@ -72,7 +63,7 @@ export function showToast(message, type = 'info') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Auth screen switches
+    // Auth Switches
     document.getElementById('go-signup')?.addEventListener('click', e => {
         e.preventDefault();
         document.getElementById('login-screen').classList.remove('active');
@@ -84,11 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('login-screen').classList.add('active');
     });
 
-    // Nav buttons (topbar + Share Food button)
+    // Nav Items
     document.querySelectorAll('[data-screen]').forEach(btn => {
         btn.addEventListener('click', () => {
-            const id = btn.getAttribute('data-screen');
-            navigateTo(id);
+            navigateTo(btn.getAttribute('data-screen'));
         });
     });
 
@@ -98,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(({ signOut }) => signOut(auth));
     });
 
-    // Init all modules
+    // Init modules
     initAuthHandlers();
     initFeed();
     initShare();
@@ -106,33 +96,21 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap();
     initProfile();
 
-    // Firebase Auth State
     onAuthStateChanged(auth, user => {
         const authWrapper = document.getElementById('auth-wrapper');
         const mainApp = document.getElementById('main-app');
+        const bottomNav = document.getElementById('bottom-nav');
 
         if (user) {
-            authWrapper.style.display = 'none';
+            authWrapper.classList.add('hidden');
             mainApp.classList.remove('hidden');
+            bottomNav.classList.remove('hidden');
             navigateTo('feed');
-
-            // Update topbar user info
-            const name = user.displayName || user.email?.split('@')[0] || 'User';
-            const initial = name.charAt(0).toUpperCase();
-            const avatarEl = document.getElementById('topbar-avatar');
-            const nameEl = document.getElementById('topbar-name');
-            const profileAvatar = document.getElementById('profile-avatar');
-            const profileName = document.getElementById('profile-name');
-
-            if (avatarEl) avatarEl.textContent = initial;
-            if (nameEl) nameEl.textContent = name;
-            if (profileAvatar) profileAvatar.textContent = initial;
-            if (profileName) profileName.textContent = name;
-
             window.currentUser = user;
         } else {
             mainApp.classList.add('hidden');
-            authWrapper.style.display = 'flex';
+            bottomNav.classList.add('hidden');
+            authWrapper.classList.remove('hidden');
             document.getElementById('login-screen').classList.add('active');
             document.getElementById('signup-screen').classList.remove('active');
         }
