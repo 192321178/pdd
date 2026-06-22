@@ -1,5 +1,5 @@
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { rtdb } from "./firebase-config.js";
+import { ref, onValue, update, set, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { rtdb, auth } from "./firebase-config.js";
 
 export function initFeed() {
     const feedGrid = document.getElementById('feed-grid');
@@ -228,10 +228,10 @@ export function openFoodDetail(item) {
             try {
                 // 1. Mark as claimed in RTDB
                 const foodRef = ref(rtdb, `food_items/${item.foodId || item.id}`);
-                const { update } from await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
                 await update(foodRef, {
                     isClaimed: true,
                     claimedBy: currentUser.uid,
+                    claimedByUid: currentUser.uid,
                     claimedAt: Date.now()
                 });
 
@@ -265,9 +265,8 @@ export function openFoodDetail(item) {
                         foodName: item.foodName
                     };
 
-                    const { update: updateDB } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
-                    await updateDB(ref(rtdb, `user_chats/${donorUid}`), { [currentUser.uid]: meta });
-                    await updateDB(ref(rtdb, `user_chats/${currentUser.uid}`), { [donorUid]: myMeta });
+                    await update(ref(rtdb, `user_chats/${donorUid}`), { [currentUser.uid]: meta });
+                    await update(ref(rtdb, `user_chats/${currentUser.uid}`), { [donorUid]: myMeta });
                 }
 
                 alert('🎉 Food claimed successfully!');
