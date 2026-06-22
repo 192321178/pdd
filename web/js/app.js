@@ -1,99 +1,87 @@
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { auth } from "./firebase-config.js";
 
-// Exact screen IDs as per section IDs in index.html
 const SCREENS = ['home', 'map', 'share', 'message', 'profile'];
 
 export function navigateTo(screenId) {
-    if (!SCREENS.includes(screenId)) {
-        console.warn('Navigation failed: screenId not found', screenId);
-        return;
-    }
+    if (!SCREENS.includes(screenId)) return;
 
-    // Toggle screen visibility
-    document.querySelectorAll('.screen').forEach(s => {
+    // Hide all screens
+    document.querySelectorAll('.main-screen').forEach(s => {
         s.classList.remove('active');
-        s.style.display = 'none'; // Force hide
     });
 
+    // Show target
     const target = document.getElementById(`${screenId}-screen`);
     if (target) {
         target.classList.add('active');
-        target.style.display = 'block'; // Force show
-        console.log('Navigated to', screenId);
     }
 
-    // Update Sidebar Navigation state
+    // Update sidebar active state
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const activeNav = document.querySelector(`[data-screen="${screenId}"]`);
     if (activeNav) activeNav.classList.add('active');
 
-    // Section-specific reloads
-    if (screenId === 'map') setTimeout(() => window.loadMap?.(), 300);
-    if (screenId === 'message') window.loadChatList?.();
-    if (screenId === 'profile') window.loadProfile?.();
+    // Trigger section-specific logic
+    if (screenId === 'map') {
+        setTimeout(() => window.loadMap?.(), 300);
+    } else if (screenId === 'message') {
+        window.loadChatList?.();
+    } else if (screenId === 'profile') {
+        window.loadProfile?.();
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-
-    console.log('App JS Loaded - Initializing Navigation');
-
-    // 1. Precise Navigation Listeners
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            const screen = item.getAttribute('data-screen');
-            navigateTo(screen);
-        });
-    });
-
-    // 2. Auth Screen Toggles (Android style)
-    document.getElementById('go-signup')?.addEventListener('click', e => {
-        e.preventDefault();
-        document.getElementById('login-screen').classList.remove('active');
-        document.getElementById('signup-screen').classList.add('active');
-    });
-    document.getElementById('go-login')?.addEventListener('click', e => {
-        e.preventDefault();
-        document.getElementById('signup-screen').classList.remove('active');
-        document.getElementById('login-screen').classList.add('active');
-    });
-
-    // 3. Logout Logic
-    document.body.addEventListener('click', e => {
-        if (e.target.closest('#logout-btn')) {
-            console.log('Logging out...');
-            signOut(auth).then(() => {
-                window.location.reload();
-            });
-        }
-    });
-
-    // 4. Global Auth Guard
+export function setupApp() {
+    // Auth state guard — runs once Firebase resolves
     onAuthStateChanged(auth, user => {
         const authWrapper = document.getElementById('auth-wrapper');
         const appWrapper = document.querySelector('.app-wrapper');
 
         if (user) {
-            console.log('User authenticated:', user.email);
+            // Authenticated: show main app
             if (authWrapper) authWrapper.style.display = 'none';
-            if (appWrapper) {
-                appWrapper.classList.remove('hidden');
-                appWrapper.style.display = 'flex';
-            }
+            if (appWrapper) { appWrapper.classList.remove('hidden'); appWrapper.style.display = 'flex'; }
             window.currentUser = user;
             navigateTo('home');
         } else {
-            console.log('No user authenticated. Showing Login.');
+            // Unauthenticated: show login
             if (appWrapper) appWrapper.style.display = 'none';
-            if (authWrapper) {
-                authWrapper.style.display = 'flex';
-                document.getElementById('login-screen').classList.add('active');
-                document.getElementById('signup-screen').classList.remove('active');
-            }
+            if (authWrapper) authWrapper.style.display = 'flex';
+            // Reset to login tab
+            document.getElementById('login-screen')?.classList.add('active');
+            document.getElementById('signup-screen')?.classList.remove('active');
         }
     });
-});
 
+    // Sidebar navigation clicks
+    document.addEventListener('click', e => {
+        const navItem = e.target.closest('[data-screen]');
+        if (navItem) {
+            e.preventDefault();
+            navigateTo(navItem.getAttribute('data-screen'));
+        }
+
+        // Logout
+        if (e.target.closest('#logout-btn')) {
+            signOut(auth).then(() => window.location.reload()).catch(console.error);
+        }
+    });
+
+    // Auth screen toggle (Login ↔ Signup)
+    document.addEventListener('click', e => {
+        if (e.target.id === 'go-signup') {
+            e.preventDefault();
+            document.getElementById('login-screen')?.classList.remove('active');
+            document.getElementById('signup-screen')?.classList.add('active');
+        }
+        if (e.target.id === 'go-login') {
+            e.preventDefault();
+            document.getElementById('signup-screen')?.classList.remove('active');
+            document.getElementById('login-screen')?.classList.add('active');
+        }
+    });
+}
+
+// Expose globally so map popups / other inline handlers can call it
 window.navigateTo = navigateTo;
