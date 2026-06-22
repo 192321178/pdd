@@ -267,6 +267,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [selenium-web-tests, appium-android-tests, unit-api-tests, validation-tests, deployment-status-tests, load-testing]
     if: always()
+    environment:
+      name: github-pages
+      url: https://192321178.github.io/pdd/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
