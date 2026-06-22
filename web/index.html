@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ShareBite — Reduce Food Waste</title>
+    <title>ShareBite — Real-Time Food Sharing Website</title>
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Leaflet for Maps -->
@@ -14,259 +14,258 @@
 
 <body>
 
-    <div class="app-container">
+    <div class="app-wrapper">
 
-        <!-- Auth Wrapper (Overlay) -->
-        <div id="auth-wrapper">
-            <!-- Login -->
-            <div id="login-screen" class="auth-screen active">
-                <h1 class="auth-title">Welcome back!</h1>
-                <p class="auth-subtitle">Login to start sharing or claiming food.</p>
-                <div class="search-bar" style="margin-bottom:16px;">
-                    <i class="fa fa-envelope" style="color:var(--text-hint)"></i>
-                    <input type="email" id="login-email" placeholder="Email Address">
-                </div>
-                <div class="search-bar" style="margin-bottom:32px;">
-                    <i class="fa fa-lock" style="color:var(--text-hint)"></i>
-                    <input type="password" id="login-password" placeholder="Password">
-                </div>
-                <button id="btn-login" class="btn-primary">LOGIN</button>
-                <p style="text-align:center; margin-top:24px; color:var(--text-secondary); font-size:14px;">
-                    New to ShareBite? <a href="#" id="go-signup"
-                        style="color:var(--primary); font-weight:700; text-decoration:none;">Sign Up</a>
-                </p>
+        <!-- Sidebar Navigation (Desktop) -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <i class="fa fa-leaf"></i>
+                <span>ShareBite</span>
             </div>
+            <nav class="sidebar-nav">
+                <div class="side-item active" data-screen="feed">
+                    <i class="fa fa-home"></i> <span>Home Feed</span>
+                </div>
+                <div class="side-item" data-screen="map">
+                    <i class="fa fa-map-location-dot"></i> <span>Food Map</span>
+                </div>
+                <div class="side-item" data-screen="share">
+                    <i class="fa fa-circle-plus"></i> <span>Post Food</span>
+                </div>
+                <div class="side-item" data-screen="messages">
+                    <i class="fa fa-message"></i> <span>Chat Inbox</span>
+                </div>
+                <div class="side-item" data-screen="profile">
+                    <i class="fa fa-user"></i> <span>Profile</span>
+                </div>
+                <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border)">
+                    <div id="btn-logout-desktop" class="side-item" style="color:var(--error)">
+                        <i class="fa fa-right-from-bracket"></i> <span>Logout</span>
+                    </div>
+                </div>
+            </nav>
+        </aside>
 
-            <!-- Signup -->
-            <div id="signup-screen" class="auth-screen">
-                <h1 class="auth-title">Join ShareBite</h1>
-                <p class="auth-subtitle">Create an account to join your community.</p>
-                <div class="search-bar" style="margin-bottom:16px;">
-                    <i class="fa fa-user" style="color:var(--text-hint)"></i>
-                    <input type="text" id="signup-name" placeholder="Full Name">
+        <!-- Auth Wrapper -->
+        <div id="auth-wrapper" class="hidden">
+            <div class="auth-box">
+                <div id="login-screen" class="auth-screen active">
+                    <h1 class="header-large" style="margin-bottom:8px;">Welcome!</h1>
+                    <p style="color:var(--text-secondary); margin-bottom:32px;">Login to start sharing food.</p>
+                    <input type="email" id="login-email" class="btn-primary"
+                        style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 20px; margin-bottom:16px;"
+                        placeholder="Email Address">
+                    <input type="password" id="login-password" class="btn-primary"
+                        style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 20px; margin-bottom:32px;"
+                        placeholder="Password">
+                    <button id="btn-login" class="btn-primary">LOGIN</button>
+                    <p style="text-align:center; margin-top:24px; color:var(--text-secondary);">New? <a href="#"
+                            id="go-signup" style="color:var(--primary); font-weight:700; text-decoration:none;">Join
+                            ShareBite</a></p>
                 </div>
-                <div class="search-bar" style="margin-bottom:16px;">
-                    <i class="fa fa-envelope" style="color:var(--text-hint)"></i>
-                    <input type="email" id="signup-email" placeholder="Email">
+                <div id="signup-screen" class="auth-screen">
+                    <h1 class="header-large" style="margin-bottom:8px;">Join Us</h1>
+                    <p style="color:var(--text-secondary); margin-bottom:32px;">Create an account to join your
+                        community.</p>
+                    <input type="text" id="signup-name" class="btn-primary"
+                        style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 20px; margin-bottom:16px;"
+                        placeholder="Full Name">
+                    <input type="email" id="signup-email" class="btn-primary"
+                        style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 20px; margin-bottom:16px;"
+                        placeholder="Email">
+                    <input type="password" id="signup-password" class="btn-primary"
+                        style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 20px; margin-bottom:32px;"
+                        placeholder="Password">
+                    <button id="btn-signup" class="btn-primary">SIGN UP</button>
+                    <p style="text-align:center; margin-top:24px; color:var(--text-secondary);">Already member? <a
+                            href="#" id="go-login"
+                            style="color:var(--primary); font-weight:700; text-decoration:none;">Login</a></p>
                 </div>
-                <div class="search-bar" style="margin-bottom:32px;">
-                    <i class="fa fa-lock" style="color:var(--text-hint)"></i>
-                    <input type="password" id="signup-password" placeholder="Create Password">
-                </div>
-                <button id="btn-signup" class="btn-primary">CREATE ACCOUNT</button>
-                <p style="text-align:center; margin-top:24px; color:var(--text-secondary); font-size:14px;">
-                    Already have an account? <a href="#" id="go-login"
-                        style="color:var(--primary); font-weight:700; text-decoration:none;">Login</a>
-                </p>
             </div>
         </div>
 
-        <!-- Main Application -->
-        <main id="main-app" class="main-content hidden">
+        <!-- Main Content Viewport -->
+        <main class="main-viewport hidden" id="main-app">
+            <div class="content-container">
 
-            <!-- Home Feed -->
-            <section id="feed-screen" class="screen">
-                <div class="android-header">
-                    <p class="header-small">EXPLORE</p>
-                    <h1 class="header-large">ShareBite</h1>
-                </div>
-                <div class="search-container">
-                    <div class="search-bar">
-                        <i class="fa fa-search" style="color:var(--text-hint)"></i>
-                        <input type="text" id="search-input" placeholder="Search food near you...">
+                <!-- Home Feed Screen -->
+                <section id="feed-screen" class="screen active">
+                    <div class="android-header">
+                        <p class="header-small">EXPLORE</p>
+                        <h1 class="header-large">Live Food Listings</h1>
                     </div>
-                </div>
-                <div id="filter-chips" class="chips-container">
-                    <div class="chip active" data-cat="all">All Items</div>
-                    <div class="chip" data-cat="Cooked Meal">Cooked</div>
-                    <div class="chip" data-cat="Fresh Produce">Produce</div>
-                    <div class="chip" data-cat="Packaged">Packaged</div>
-                    <div class="chip" data-cat="Bakery">Bakery</div>
-                </div>
-                <div style="padding:0 24px 12px;">
-                    <h2 style="font-size:14px; font-weight:700;">Recommended for you</h2>
-                </div>
-                <div id="feed-grid" class="feed-grid">
-                    <!-- Cards loaded by JS -->
-                </div>
-            </section>
-
-            <!-- Map View -->
-            <section id="map-screen" class="screen">
-                <div class="android-header">
-                    <p class="header-small">NEARBY</p>
-                    <h1 class="header-large">Food Map</h1>
-                </div>
-                <div id="map"
-                    style="height: 450px; margin: 0 24px; border-radius: var(--radius-lg); box-shadow: var(--shadow);">
-                </div>
-                <div style="padding: 24px;">
-                    <h3 style="font-size: 16px; margin-bottom: 8px;">Find food donors</h3>
-                    <p style="font-size: 14px; color: var(--text-secondary);">Allow location access to see the nearest
-                        donors and community kitchens.</p>
-                </div>
-            </section>
-
-            <!-- Share Food (Post) -->
-            <section id="share-screen" class="screen">
-                <div class="android-header" style="margin-bottom:12px;">
-                    <h1 class="header-large" style="font-size:32px;">Post Food</h1>
-                    <p style="font-size:14px; color:var(--text-secondary)">Share your extra food with others</p>
-                </div>
-                <div style="padding: 0 24px;">
-                    <div id="photo-upload-box" class="stat-card"
-                        style="height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px dashed var(--primary);">
-                        <input type="file" id="photo-input" accept="image/*" class="hidden">
-                        <i class="fa fa-camera" style="font-size:40px; color:var(--primary); margin-bottom:12px;"></i>
-                        <img id="photo-preview" class="hidden"
-                            style="position:absolute; width:100%; height:100%; object-fit:cover; border-radius:var(--radius-md);">
-                        <span style="font-weight:700; color:var(--text-primary)">Add Food Photo</span>
-                    </div>
-
-                    <div style="margin-top:32px;">
-                        <p
-                            style="font-size:12px; font-weight:900; color:var(--primary); margin-bottom:16px; letter-spacing:1px;">
-                            FOOD DETAILS</p>
-                        <input type="text" id="share-food-name" class="btn-primary"
-                            style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 16px; margin-bottom:16px;"
-                            placeholder="Name of food item">
-
-                        <p style="font-size:11px; font-weight:900; color:var(--primary); margin-bottom:12px;">CATEGORY
-                        </p>
-                        <div id="category-chips" class="profile-stats-grid"
-                            style="grid-template-columns:1fr 1fr; padding:0; gap:12px; margin-bottom:20px;">
-                            <div class="chip cat-chip active" data-cat="Cooked Meal"
-                                style="height:50px; margin:0; display:flex; align-items:center; justify-content:center;">
-                                Cooked</div>
-                            <div class="chip cat-chip" data-cat="Fresh Produce"
-                                style="height:50px; margin:0; display:flex; align-items:center; justify-content:center;">
-                                Produce</div>
-                            <div class="chip cat-chip" data-cat="Packaged"
-                                style="height:50px; margin:0; display:flex; align-items:center; justify-content:center;">
-                                Packaged</div>
-                            <div class="chip cat-chip" data-cat="Bakery"
-                                style="height:50px; margin:0; display:flex; align-items:center; justify-content:center;">
-                                Bakery</div>
+                    <div style="display:flex; gap:16px; margin-bottom:40px; flex-wrap:wrap;">
+                        <div class="stat-card"
+                            style="flex:1; min-width:300px; padding:0 20px; height:56px; display:flex; align-items:center;">
+                            <i class="fa fa-search" style="color:var(--text-hint); margin-right:12px;"></i>
+                            <input type="text" id="search-input" placeholder="Search community food..."
+                                style="border:none; outline:none; background:none; flex:1; font-size:16px;">
                         </div>
-
-                        <input type="text" id="share-quantity" class="btn-primary"
-                            style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 16px; margin-bottom:16px;"
-                            placeholder="Quantity (e.g. 2 servings)">
-                        <input type="text" id="share-location" class="btn-primary"
-                            style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 16px; margin-bottom:24px;"
-                            placeholder="Pickup Location">
-
-                        <p style="font-size:11px; font-weight:900; color:var(--primary); margin-bottom:12px;">
-                            AVAILABILITY</p>
-                        <div style="display:flex; gap:12px; margin-bottom:24px;">
-                            <input type="number" id="share-hours" class="btn-primary"
-                                style="background:var(--input-bg); color:var(--text-primary); padding:0; flex:1;"
-                                placeholder="Hours">
-                            <input type="number" id="share-mins" class="btn-primary"
-                                style="background:var(--input-bg); color:var(--text-primary); padding:0; flex:1;"
-                                placeholder="Mins">
+                        <div id="filter-chips" style="display:flex; gap:12px; overflow-x:auto;">
+                            <button class="chip active" data-cat="all"
+                                style="padding:10px 24px; border-radius:30px; border:none; cursor:pointer; font-weight:700;">All
+                                Items</button>
+                            <button class="chip" data-cat="Cooked Meal"
+                                style="padding:10px 24px; border-radius:30px; border:none; cursor:pointer; font-weight:700;">Cooked</button>
+                            <button class="chip" data-cat="Fresh Produce"
+                                style="padding:10px 24px; border-radius:30px; border:none; cursor:pointer; font-weight:700;">Produce</button>
                         </div>
-
-                        <textarea id="share-description" class="btn-primary"
-                            style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:16px; height:120px; font-family:inherit; margin-bottom:32px;"
-                            placeholder="Short description..."></textarea>
-
-                        <button id="btn-share-submit" class="btn-primary" style="margin-bottom:40px;">SHARE
-                            FOOD</button>
                     </div>
-                </div>
-            </section>
-
-            <!-- Messages -->
-            <section id="messages-screen" class="screen">
-                <div class="android-header">
-                    <p class="header-small">MESSAGES</p>
-                    <h1 class="header-large">Chat Inbox</h1>
-                </div>
-                <div id="chat-list" style="padding: 0 24px;">
-                    <!-- Chat items loaded by JS -->
-                </div>
-            </section>
-
-            <!-- Profile -->
-            <section id="profile-screen" class="screen">
-                <div style="padding: 24px; display:flex; justify-content:space-between; align-items:flex-start;">
-                    <h1 class="header-large" style="font-size:32px; color:var(--text-primary)">My Profile</h1>
-                    <button id="btn-logout" class="chip"
-                        style="color:var(--error); border:none; height:44px; width:44px; padding:0; display:flex; align-items:center; justify-content:center; background:var(--surface); font-size:20px;">⇥</button>
-                </div>
-
-                <div style="display:flex; flex-direction:column; align-items:center; padding:0 24px 32px;">
-                    <div id="profile-avatar"
-                        style="width:100px; height:100px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:36px; font-weight:700; box-shadow:0 10px 20px rgba(0,200,83,0.2)">
-                        U</div>
-                    <h2 id="profile-name" style="margin-top:16px; font-size:22px;">Loading...</h2>
-                    <p style="margin-top:4px; font-size:14px; color:var(--text-secondary)">📍 Shared Location</p>
-                    <button class="chip"
-                        style="margin-top:20px; border:1px solid var(--primary); color:var(--primary); background:none; padding:8px 24px;">EDIT
-                        PROFILE</button>
-                </div>
-
-                <p
-                    style="font-size:12px; font-weight:900; color:var(--primary); margin-left:24px; margin-bottom:16px; letter-spacing:1px;">
-                    MY IMPACT</p>
-                <div class="profile-stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">🎁</div>
-                        <div id="stat-donations" class="stat-value">0</div>
-                        <div class="stat-label">Donations</div>
+                    <div id="feed-grid" class="feed-grid">
+                        <!-- Redesigned Cards Loaded Here -->
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🥗</div>
-                        <div id="stat-claims" class="stat-value">0</div>
-                        <div class="stat-label">Claims</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🌿</div>
-                        <div id="stat-kg" class="stat-value">0.0</div>
-                        <div class="stat-label">kg Saved</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">☁️</div>
-                        <div id="stat-co2" class="stat-value">0.0</div>
-                        <div class="stat-label">CO₂ Reduced</div>
-                    </div>
-                </div>
-            </section>
+                </section>
 
+                <!-- Map Screen -->
+                <section id="map-screen" class="screen">
+                    <div class="android-header">
+                        <p class="header-small">NEARBY</p>
+                        <h1 class="header-large">Food Donor Map</h1>
+                    </div>
+                    <div id="map"
+                        style="height: 600px; border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1px solid var(--border);">
+                    </div>
+                </section>
+
+                <!-- Post Food Screen -->
+                <section id="share-screen" class="screen">
+                    <div class="android-header">
+                        <p class="header-small">DONATE</p>
+                        <h1 class="header-large">Register New Food</h1>
+                    </div>
+                    <div
+                        style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:40px; align-items:start;">
+                        <div id="photo-upload-box" class="stat-card"
+                            style="height:350px; border:2px dashed var(--primary); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; position:relative;">
+                            <input type="file" id="photo-input" accept="image/*" style="display:none">
+                            <i class="fa fa-image"
+                                style="font-size:48px; color:var(--primary); margin-bottom:12px;"></i>
+                            <span style="font-weight:700;">Click to upload food photo</span>
+                            <img id="photo-preview" class="hidden"
+                                style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:var(--radius-md);">
+                        </div>
+                        <div class="stat-card">
+                            <p
+                                style="font-size:11px; font-weight:900; color:var(--primary); margin-bottom:16px; letter-spacing:1px;">
+                                ITEM DETAILS</p>
+                            <input type="text" id="share-food-name" class="btn-primary"
+                                style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 20px; margin-bottom:20px;"
+                                placeholder="What are you sharing?">
+
+                            <p style="font-size:11px; font-weight:900; color:var(--primary); margin-bottom:12px;">
+                                CATEGORY</p>
+                            <div id="category-chips"
+                                style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
+                                <button class="chip cat-chip active" data-cat="Cooked Meal"
+                                    style="height:44px; padding:0 20px; border-radius:12px; border:1px solid var(--primary); background:rgba(0,200,83,0.1); color:var(--primary); font-weight:700; cursor:pointer;">Cooked</button>
+                                <button class="chip cat-chip" data-cat="Fresh Produce"
+                                    style="height:44px; padding:0 20px; border-radius:12px; border:1px solid var(--border); background:none; font-weight:700; cursor:pointer;">Produce</button>
+                                <button class="chip cat-chip" data-cat="Packaged"
+                                    style="height:44px; padding:0 20px; border-radius:12px; border:1px solid var(--border); background:none; font-weight:700; cursor:pointer;">Packaged</button>
+                            </div>
+
+                            <input type="text" id="share-quantity" class="btn-primary"
+                                style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 20px; margin-bottom:20px;"
+                                placeholder="Quantity (e.g. 3 boxes)">
+                            <input type="text" id="share-location" class="btn-primary"
+                                style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:0 20px; margin-bottom:20px;"
+                                placeholder="Pickup Location">
+                            <textarea id="share-description" class="btn-primary"
+                                style="background:var(--input-bg); color:var(--text-primary); text-align:left; padding:16px; height:120px; font-family:inherit;"
+                                placeholder="Short description..."></textarea>
+                            <button id="btn-share-submit" class="btn-primary" style="margin-top:32px;">SUBMIT
+                                LISTING</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Messages Screen -->
+                <section id="messages-screen" class="screen">
+                    <div class="android-header">
+                        <p class="header-small">INBOX</p>
+                        <h1 class="header-large">Real-Time Messaging</h1>
+                    </div>
+                    <div id="chat-list"
+                        style="display:grid; grid-template-columns:repeat(auto-fill, minmax(400px, 1fr)); gap:20px;">
+                        <!-- Chat Items Loaded Here -->
+                    </div>
+                </section>
+
+                <!-- Profile Screen -->
+                <section id="profile-screen" class="screen">
+                    <div class="android-header"
+                        style="display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div>
+                            <p class="header-small">USER CENTER</p>
+                            <h1 class="header-large">Account & Impact</h1>
+                        </div>
+                        <button id="btn-logout" class="btn-primary"
+                            style="width:auto; padding:0 32px; background:var(--surface); color:var(--error);">LOGOUT</button>
+                    </div>
+                    <div class="stat-card" style="display:flex; align-items:center; gap:32px; margin-bottom:40px;">
+                        <div id="profile-avatar"
+                            style="width:120px; height:120px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:48px; font-weight:900;">
+                            U</div>
+                        <div>
+                            <h2 id="profile-name" style="font-size:32px; margin-bottom:4px;">Loading...</h2>
+                            <p id="profile-location" style="color:var(--text-secondary); font-size:18px;">📍 Fetching
+                                location...</p>
+                        </div>
+                    </div>
+                    <p
+                        style="font-size:12px; font-weight:900; color:var(--primary); margin-bottom:20px; letter-spacing:1.5px;">
+                        ENVIRONMENTAL CONTRIBUTION</p>
+                    <div class="profile-stats-grid">
+                        <div class="stat-card">
+                            <div style="font-size:32px; margin-bottom:12px;">🎁</div>
+                            <div id="stat-donations" style="font-size:32px; font-weight:800;">0</div>
+                            <div style="color:var(--text-secondary); font-weight:600;">Total Donations</div>
+                        </div>
+                        <div class="stat-card">
+                            <div style="font-size:32px; margin-bottom:12px;">🥗</div>
+                            <div id="stat-claims" style="font-size:32px; font-weight:800;">0</div>
+                            <div style="color:var(--text-secondary); font-weight:600;">Food Claims</div>
+                        </div>
+                        <div class="stat-card">
+                            <div style="font-size:32px; margin-bottom:12px;">🌿</div>
+                            <div id="stat-kg" style="font-size:32px; font-weight:800;">0.0</div>
+                            <div style="color:var(--text-secondary); font-weight:600;">kg Saved</div>
+                        </div>
+                        <div class="stat-card">
+                            <div style="font-size:32px; margin-bottom:12px;">☁️</div>
+                            <div id="stat-co2" style="font-size:32px; font-weight:800;">0.0</div>
+                            <div style="color:var(--text-secondary); font-weight:600;">CO₂ Reduced</div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
         </main>
 
-        <!-- Bottom Navigation -->
-        <nav id="bottom-nav" class="bottom-nav hidden">
-            <div id="nav-feed" class="nav-item active" data-screen="feed">
-                <i class="fa fa-home"></i>
-                <span>Home</span>
+        <!-- Mobile Bottom Nav -->
+        <nav class="bottom-nav" id="bottom-nav">
+            <div data-screen="feed" class="active"><i class="fa fa-home"></i></div>
+            <div data-screen="map"><i class="fa fa-map-location-dot"></i></div>
+            <div data-screen="share" style="color:var(--primary); font-size:24px;"><i class="fa fa-circle-plus"></i>
             </div>
-            <div id="nav-map" class="nav-item" data-screen="map">
-                <i class="fa fa-map-location-dot"></i>
-                <span>Map</span>
-            </div>
-            <div id="nav-share" class="nav-item" data-screen="share">
-                <i class="fa fa-circle-plus" style="font-size:32px; color:var(--primary)"></i>
-                <span>Share</span>
-            </div>
-            <div id="nav-messages" class="nav-item" data-screen="messages">
-                <i class="fa fa-message"></i>
-                <span>Chat</span>
-            </div>
-            <div id="nav-profile" class="nav-item" data-screen="profile">
-                <i class="fa fa-user"></i>
-                <span>Profile</span>
-            </div>
+            <div data-screen="messages"><i class="fa fa-message"></i></div>
+            <div data-screen="profile"><i class="fa fa-user"></i></div>
         </nav>
 
-        <!-- Detail Overlay -->
-        <div id="food-detail">
-            <!-- Content built by JS -->
+        <!-- Food Detail Overlay -->
+        <div id="food-detail" class="hidden"
+            style="position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(8px); z-index:5000; display:flex; align-items:center; justify-content:center;">
+            <div class="stat-card"
+                style="width:100%; max-width:800px; max-height:90vh; overflow-y:auto; padding:0; position:relative;">
+                <button onclick="document.getElementById('food-detail').classList.add('hidden')"
+                    style="position:absolute; top:20px; right:20px; width:44px; height:44px; border-radius:50%; background:rgba(0,0,0,0.1); border:none; cursor:pointer; z-index:10;"><i
+                        class="fa fa-times"></i></button>
+                <div id="detail-content"></div>
+            </div>
         </div>
 
         <div id="toast-container"
-            style="position:fixed; bottom:100px; left:0; right:0; display:flex; flex-direction:column; align-items:center; pointer-events:none; z-index:5000;">
+            style="position:fixed; bottom:100px; left:0; right:0; display:flex; flex-direction:column; align-items:center; pointer-events:none; z-index:6000;">
         </div>
     </div>
 

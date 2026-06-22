@@ -5,94 +5,95 @@ export function initShare() {
     const photoBox = document.getElementById('photo-upload-box');
     const photoInput = document.getElementById('photo-input');
     const photoPreview = document.getElementById('photo-preview');
-    const submitBtn = document.getElementById('btn-share-submit');
-    const categoryChips = document.getElementById('category-chips');
+    const btnSubmit = document.getElementById('btn-share-submit');
 
-    let selectedCategory = 'Cooked Meal';
-    let selectedPhotoBase64 = null;
+    let activeCategory = 'Cooked Meal';
 
     photoBox?.addEventListener('click', () => photoInput?.click());
-    photoInput?.addEventListener('change', (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-            photoPreview.src = ev.target.result;
-            photoPreview.classList.remove('hidden');
-            selectedPhotoBase64 = ev.target.result;
-        };
-        reader.readAsDataURL(file);
+    photoInput?.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                photoPreview.src = re.target.result;
+                photoPreview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
     });
 
-    categoryChips?.addEventListener('click', e => {
-        const chip = e.target.closest('.cat-chip');
-        if (!chip) return;
-        document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        selectedCategory = chip.getAttribute('data-cat');
+    document.querySelectorAll('.cat-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.cat-chip').forEach(c => {
+                c.classList.remove('active');
+                c.style.background = 'none';
+                c.style.borderColor = 'var(--border)';
+                c.style.color = 'var(--text-primary)';
+            });
+            chip.classList.add('active');
+            chip.style.background = 'rgba(0,200,83,0.1)';
+            chip.style.borderColor = 'var(--primary)';
+            chip.style.color = 'var(--primary)';
+            activeCategory = chip.getAttribute('data-cat');
+        });
     });
 
-    submitBtn?.addEventListener('click', async () => {
+    btnSubmit?.addEventListener('click', async () => {
         const user = auth.currentUser;
-        if (!user) { window.showToast?.('Please login first', 'error'); return; }
+        if (!user) {
+            window.showToast?.('Please login to share food', 'error');
+            return;
+        }
 
-        const foodName = document.getElementById('share-food-name')?.value.trim();
-        const quantity = document.getElementById('share-quantity')?.value.trim();
-        const location = document.getElementById('share-location')?.value.trim();
-        const hrs = parseInt(document.getElementById('share-hours')?.value || '0');
-        const mins = parseInt(document.getElementById('share-mins')?.value || '0');
-        const desc = document.getElementById('share-description')?.value.trim();
+        const foodName = document.getElementById('share-food-name').value.trim();
+        const quantity = document.getElementById('share-quantity').value.trim();
+        const location = document.getElementById('share-location').value.trim();
+        const description = document.getElementById('share-description').value.trim();
 
-        if (!foodName || !quantity || !location) {
+        if (!foodName || !quantity) {
             window.showToast?.('Please fill required fields', 'error');
             return;
         }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Sharing...';
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = 'PUBLISHING...';
 
         try {
             const newItemRef = push(ref(rtdb, 'food_items'));
-            const expiry = Date.now() + (hrs * 3600000) + (mins * 60000);
+            const expiry = Date.now() + (4 * 3600000); // Default 4 hours parity
 
-            const itemData = {
-                id: newItemRef.key,
+            await set(newItemRef, {
+                foodId: newItemRef.key,
                 foodName,
-                category: selectedCategory,
+                category: activeCategory,
                 quantity,
-                location,
-                expiryTimeMillis: expiry,
-                description: desc || '',
-                imageUri: selectedPhotoBase64 || '',
-                isClaimed: false,
-                claimedByUid: "",
+                location: location || 'Coimbatore',
+                description,
+                imageUri: photoPreview.src || '',
                 userUid: user.uid,
-                userName: user.displayName || user.email?.split('@')[0] || 'User',
-                sharedAt: serverTimestamp()
-            };
+                userName: user.displayName || user.email.split('@')[0],
+                sharedAt: serverTimestamp(),
+                expiryTimeMillis: expiry,
+                isClaimed: false,
+                lat: 11.0168, // Default
+                lng: 76.9558
+            });
 
-            await set(newItemRef, itemData);
-            window.showToast?.('🌿 Food shared successfully!', 'success');
-            resetForm();
-            window.navigateTo?.('feed');
+            window.showToast?.('🚀 Food Listing Live!', 'success');
+            window.navigateTo('feed');
+
+            // Reset form
+            document.getElementById('share-food-name').value = '';
+            document.getElementById('share-quantity').value = '';
+            document.getElementById('share-description').value = '';
+            photoPreview.classList.add('hidden');
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = 'SUBMIT LISTING';
+
         } catch (err) {
-            console.error('Share error:', err);
-            window.showToast?.('Failed to share', 'error');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'SHARE FOOD';
+            window.showToast?.('Error publishing: ' + err.message, 'error');
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = 'SUBMIT LISTING';
         }
     });
-
-    function resetForm() {
-        document.getElementById('share-food-name').value = '';
-        document.getElementById('share-quantity').value = '';
-        document.getElementById('share-location').value = '';
-        document.getElementById('share-hours').value = '';
-        document.getElementById('share-mins').value = '';
-        document.getElementById('share-description').value = '';
-        photoPreview.src = '';
-        photoPreview.classList.add('hidden');
-        selectedPhotoBase64 = null;
-    }
 }
