@@ -16,7 +16,6 @@ export function initFeed() {
         if (snapshot.exists()) {
             snapshot.forEach(child => {
                 const item = { id: child.key, ...child.val() };
-                // Parity: Ignore expired items
                 if (item.expiryTimeMillis && now > item.expiryTimeMillis) return;
                 allItems.push(item);
             });
@@ -35,12 +34,7 @@ export function initFeed() {
 
         feedGrid.innerHTML = '';
         if (!filtered.length) {
-            feedGrid.innerHTML = `
-                <div style="grid-column: 1 / -1; text-align:center; padding:80px;">
-                    <i class="fa fa-plate-wheat" style="font-size:64px; color:var(--text-hint); margin-bottom:20px;"></i>
-                    <h2 style="color:var(--text-primary)">No Live Food Found</h2>
-                    <p style="color:var(--text-secondary)">Try a different category or wait for a community share.</p>
-                </div>`;
+            feedGrid.innerHTML = `<div class="empty-state">No listings found near you.</div>`;
             return;
         }
 
@@ -70,80 +64,89 @@ function createFoodCard(item) {
     const mins = Math.floor((timeLeft % 3600000) / 60000);
     const timeText = timeLeft > 0 ? `${hrs}h ${mins}m left` : 'Expired';
 
+    // Parity: Determine "Fresh!" status (e.g. shared in last 2 hours)
+    const isFresh = (Date.now() - (item.sharedAt || 0)) < 7200000;
+
     div.innerHTML = `
-        <div class="card-img-wrap">
-            ${item.imageUri ? `<img src="${item.imageUri}">` : `<div style="height:100%; display:flex; align-items:center; justify-content:center; font-size:40px;">🍲</div>`}
-            <div style="position:absolute; top:12px; right:12px; background:rgba(255,82,82,0.9); color:#fff; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700;">
-                LIVE · ${timeText}
+        <div class="card-image-wrap">
+            ${item.imageUri ? `<img src="${item.imageUri}">` : `<div class="img-placeholder">🍱</div>`}
+            ${isFresh ? `<div class="fresh-tag">Fresh!</div>` : ''}
+            <div style="position:absolute; bottom:12px; left:12px; background:rgba(0,0,0,0.6); color:#fff; padding:4px 8px; border-radius:4px; font-size:11px; font-weight:700;">
+                ${item.category || 'Cooked Meal'}
             </div>
-            ${item.isClaimed ? `<div style="position:absolute; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; letter-spacing:3px;">CLAIMED</div>` : ''}
         </div>
         <div class="card-body">
+            <div class="card-row-top">
+                <span style="color:var(--text-hint); font-size:11px;">← SKIP</span>
+                <span style="color:var(--primary); font-size:11px;">CLAIM →</span>
+            </div>
             <h3 class="card-title">${item.foodName}</h3>
-            <p class="card-meta">${item.quantity} · ${item.category}</p>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:28px; height:28px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${item.userName?.charAt(0).toUpperCase() || 'S'}</div>
-                <span style="font-size:14px; color:var(--text-secondary)">By <b>${item.userName}</b></span>
+            <p class="card-text-secondary">${item.quantity || '1 portion'}</p>
+            <p style="color:var(--error); font-size:12px; font-weight:700; margin-bottom:4px;">${timeText}</p>
+            <p class="card-text-secondary" style="font-size:12px;">${item.description || 'Tasty'}</p>
+            <div class="card-footer">
+                <div class="user-pill">
+                    <div class="avatar-small">${item.userName?.charAt(0).toUpperCase() || 'U'}</div>
+                    <span>${item.userName || 'Anonymous'}</span>
+                </div>
+                <div style="font-weight:900; font-size:13px;"><i class="fas fa-star" style="color:#FFC107"></i> 5.0</div>
             </div>
         </div>
     `;
 
-    div.onclick = () => openDetail(item);
+    div.onclick = () => openFoodDetail(item);
     return div;
 }
 
-function openDetail(item) {
-    const overlay = document.getElementById('food-detail');
-    const content = document.getElementById('detail-content');
+function openFoodDetail(item) {
+    const screen = document.getElementById('food-detail-screen');
+    const timeLeft = (item.expiryTimeMillis || 0) - Date.now();
+    const hrs = Math.floor(timeLeft / 3600000);
+    const mins = Math.floor((timeLeft % 3600000) / 60000);
+    const timeText = timeLeft > 0 ? `${hrs}h ${mins}m left` : 'Expired';
 
-    content.innerHTML = `
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
-            <div style="height:400px; background:var(--surface);">
-                ${item.imageUri ? `<img src="${item.imageUri}" style="width:100%; height:100%; object-fit:cover;">` : `<div style="height:100%; display:flex; align-items:center; justify-content:center; font-size:80px;">🍱</div>`}
+    screen.innerHTML = `
+        <div class="detail-header-android">
+            <button onclick="window.navigateTo('home')" class="btn-back"><i class="fas fa-arrow-left"></i></button>
+            <h1>Details</h1>
+        </div>
+        <div class="detail-content-android">
+            <div class="detail-image-box">
+                ${item.imageUri ? `<img src="${item.imageUri}">` : `<div class="img-placeholder-lg">🍲</div>`}
+                <div class="detail-category-badge">${item.category}</div>
             </div>
-            <div style="padding:40px;">
-                <span style="padding:4px 12px; background:rgba(0,200,83,0.1); color:var(--primary); border-radius:30px; font-size:12px; font-weight:700;">${item.category}</span>
-                <h1 style="font-size:36px; margin:12px 0;">${item.foodName}</h1>
-                <p style="color:var(--text-secondary); margin-bottom:24px;">📍 ${item.location || 'Chennai'}</p>
-                
-                <div class="profile-stats-grid" style="margin-bottom:32px;">
-                    <div class="stat-card" style="padding:16px; text-align:center;">
-                        <div style="font-size:12px; color:var(--text-secondary)">Quantity</div>
-                        <div style="font-weight:700; font-size:18px;">${item.quantity}</div>
-                    </div>
-                    <div class="stat-card" style="padding:16px; text-align:center;">
-                        <div style="font-size:12px; color:var(--text-secondary)">Availability</div>
-                        <div style="font-weight:700; font-size:18px; color:var(--error)">Live Listing</div>
-                    </div>
+            <div class="detail-info-box">
+                <h2 class="detail-title">${item.foodName}</h2>
+                <div class="detail-meta-row">
+                    <span><i class="fas fa-box"></i> ${item.quantity}</span>
+                    <span style="color:var(--error); font-weight:800;"><i class="fas fa-clock"></i> ${timeText}</span>
                 </div>
-
-                <p style="font-size:12px; font-weight:900; color:var(--primary); margin-bottom:12px; letter-spacing:1px;">DESCRIPTION</p>
-                <p style="line-height:1.7; color:var(--text-secondary); margin-bottom:40px;">${item.description || 'No description provided by donor.'}</p>
-
-                <div style="display:flex; gap:16px;">
-                    <button id="btn-claim-web" class="btn-primary" style="flex:2;">CLAIM THIS FOOD</button>
-                    <button onclick="window.navigateTo('messages')" style="flex:1; background:var(--surface); border:none; border-radius:16px; cursor:pointer;"><i class="fa fa-comment" style="font-size:20px;"></i></button>
+                <p class="detail-location"><i class="fas fa-map-marker-alt"></i> ${item.location || 'Coimbatore, TN'}</p>
+                <div class="detail-description-section">
+                    <h3>Description</h3>
+                    <p>${item.description || 'No description provided.'}</p>
+                </div>
+                <div class="detail-action-row">
+                    <button id="btn-claim-final" class="btn btn-claim-main">CLAIM FOOD</button>
+                    <button onclick="window.navigateTo('message')" class="btn btn-msg-icon"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
         </div>
     `;
 
-    overlay.classList.remove('hidden');
+    // Reset visibility logic
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    screen.classList.add('active');
 
-    const claimBtn = content.querySelector('#btn-claim-web');
+    const claimBtn = screen.querySelector('#btn-claim-final');
     if (item.isClaimed) {
         claimBtn.disabled = true;
-        claimBtn.textContent = 'ALREADY CLAIMED';
-        claimBtn.style.background = '#ccc';
+        claimBtn.classList.add('btn-disabled');
+        claimBtn.textContent = 'CLAIMED';
     } else {
-        claimBtn.onclick = async () => {
-            claimBtn.disabled = true;
-            claimBtn.textContent = 'Processing...';
-            // Simulating successful claim
-            setTimeout(() => {
-                window.showToast?.('🎉 Food Claimed! Contact the donor in Chat.', 'success');
-                overlay.classList.add('hidden');
-            }, 800);
+        claimBtn.onclick = () => {
+            alert('🎉 Request sent! Contact donor via Message.');
+            window.navigateTo('home');
         };
     }
 }
