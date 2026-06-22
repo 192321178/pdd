@@ -124,76 +124,67 @@ export function openFoodDetail(item) {
     detailTimer = setInterval(updateTimer, 1000);
 
     const donorInitial = (item.donorName || 'U').charAt(0).toUpperCase();
+    const tags = item.dietaryTags || ['halal'];
+    const tagsHtml = tags.map(t => `<span>${t}</span>`).join('');
 
     screen.innerHTML = `
-        <div class="detail-image-box">
-            <button onclick="window.navigateTo('home')" class="btn-back-detail"><i class="fas fa-arrow-left"></i></button>
-            ${item.imageUri ? `<img src="${item.imageUri}">` : `<div class="img-placeholder-lg" style="height:100%; display:flex; align-items:center; justify-content:center; font-size:80px; background:#222;">🍲</div>`}
-        </div>
-
-        <div class="detail-body">
-            <div class="detail-title-flex">
-                <div>
-                    <h2>${item.foodName}</h2>
-                    <div style="margin-top:8px;">
-                        <span class="cat-chip active" style="font-size:12px; padding:6px 16px;">${item.category}</span>
-                    </div>
-                </div>
-                <div class="expiry-countdown">
-                    <span class="label">Expires in</span>
-                    <span class="time" id="detail-timer-val">00 : 00 : 00</span>
-                    <div style="display:flex; justify-content:space-between; font-size:9px; color:#666; margin-top:2px;">
-                        <span>hr</span><span>min</span><span>sec</span>
-                    </div>
-                </div>
+        <div class="detail-web-layout">
+            <div class="detail-web-image">
+                ${item.imageUri ? `<img src="${item.imageUri}" alt="${item.foodName}">` : `<div class="img-placeholder-lg">🍲</div>`}
             </div>
+            <div class="detail-web-info">
+                <button onclick="window.navigateTo('home')" class="btn-back-web"><i class="fas fa-arrow-left"></i> Back to Feed</button>
 
-            <div class="detail-info-grid" style="margin-top:24px;">
-                <div class="detail-card">
-                    <i class="fas fa-egg"></i>
-                    <div class="detail-card-info">
+                <h2>${item.foodName}</h2>
+                <div class="detail-meta">
+                    <span class="cat-chip active">${item.category}</span>
+                    <div class="countdown-box">
+                        <i class="fas fa-clock"></i>
+                        <span id="detail-timer-val">00 : 00 : 00</span>
+                    </div>
+                </div>
+
+                <div class="info-cards-row">
+                    <div class="info-card-web">
+                        <i class="fas fa-egg"></i>
                         <span class="label">Quantity</span>
                         <span class="value">${item.quantity}</span>
                     </div>
-                </div>
-                <div class="detail-card">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <div class="detail-card-info">
+                    <div class="info-card-web">
+                        <i class="fas fa-map-marker-alt"></i>
                         <span class="label">Location</span>
                         <span class="value">${item.location || 'Poonamallee'}</span>
                     </div>
-                </div>
-                <div class="detail-card">
-                    <i class="fas fa-clock"></i>
-                    <div class="detail-card-info">
-                        <span class="label">Pickup window</span>
-                        <span class="value">Now · ${item.location || 'Poonamallee'}</span>
+                    <div class="info-card-web">
+                        <i class="fas fa-truck"></i>
+                        <span class="label">Pickup</span>
+                        <span class="value">Now</span>
                     </div>
                 </div>
-            </div>
 
-            <div style="margin-top:20px;">
-                <span class="cat-chip" style="background:#E8F5E9; color:#2E7D32; border:none; padding:4px 12px; font-size:11px;">halal</span>
-            </div>
+                <div class="dietary-chips">${tagsHtml}</div>
 
-            <h3 class="detail-section-title">About this listing</h3>
-            <p style="color:#aaa; line-height:1.6; font-size:15px;">${item.description || 'Tasty'}</p>
+                <div class="about-section">
+                    <h3>About this listing</h3>
+                    <p>${item.description || 'Freshly prepared and ready for pickup.'}</p>
+                </div>
 
-            <h3 class="detail-section-title">Donor</h3>
-            <div class="donor-card">
-                <div class="donor-avatar">${donorInitial}</div>
-                <div class="donor-details">
-                    <h4>${item.donorName || 'User'}</h4>
-                    <p>⭐ 4.9 · 23 donations</p>
+                <div class="about-section">
+                    <h3>Donor</h3>
+                    <div class="donor-card-web">
+                        <div class="donor-avatar-web">${donorInitial}</div>
+                        <div>
+                            <strong>${item.donorName || 'User'}</strong>
+                            <p style="font-size:13px; color:var(--text-hint);">⭐ Community contributor</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-web-actions">
+                    <button id="btn-claim-final" class="btn-web-claim">CLAIM FOOD</button>
+                    <button id="btn-msg-donor" class="btn-web-msg"><i class="far fa-comment-alt"></i> MESSAGE DONOR</button>
                 </div>
             </div>
-        </div>
-
-        <div class="detail-actions-fixed">
-            <button id="btn-claim-final" class="btn-detail-main btn-detail-claim">CLAIM FOOD</button>
-            <button id="btn-msg-donor" class="btn-detail-main btn-detail-msg">
-                <i class="far fa-comment-alt"></i> MESSAGE DONOR
-            </button>
         </div>
     `;
 

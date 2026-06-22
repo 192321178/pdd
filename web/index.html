@@ -202,9 +202,40 @@
                     <div class="form-group">
                         <label>Available Until *</label>
                         <div class="time-inputs">
-                            <input type="number" id="share-hours" placeholder="Hours" min="0">
-                            <input type="number" id="share-minutes" placeholder="Minutes" min="0" max="59">
+                            <input type="number" id="share-hours" placeholder="Hours" min="0" max="23" value="0">
+                            <input type="number" id="share-minutes" placeholder="Minutes" min="0" max="59" value="20">
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Dietary Tags</label>
+                        <div class="dietary-tags-row">
+                            <button class="diet-tag" data-tag="dairy-free">dairy-free</button>
+                            <button class="diet-tag" data-tag="vegetarian">vegetarian</button>
+                            <button class="diet-tag" data-tag="halal">halal</button>
+                            <button class="diet-tag" data-tag="vegan">vegan</button>
+                            <button class="diet-tag" data-tag="gluten-free">gluten-free</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="share-description" rows="3"
+                            placeholder="Any special notes about the food..."></textarea>
+                    </div>
+
+                    <div class="form-group anon-toggle-row">
+                        <div>
+                            <span style="font-size:20px;">🫣</span>
+                            <div>
+                                <strong>Anonymous donation</strong>
+                                <p style="font-size:12px; color:#999; margin:0;">Hide your name from the listing</p>
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="share-anonymous">
+                            <span class="slider round"></span>
+                        </label>
                     </div>
                 </div>
             </section>
