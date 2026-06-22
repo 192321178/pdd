@@ -332,10 +332,9 @@
         import { initProfile } from './js/profile.js';
         import { setupApp } from './js/app.js';
 
-        // Boot: Auth guard first, then modules
-        // initAuthHandlers is async (handles redirect result)
+        // Boot order: Auth guard first, then modules
         setupApp();
-        await initAuthHandlers();
+        initAuthHandlers();
         initFeed();
         initShare();
         initChat();
