@@ -451,6 +451,143 @@ body {
     color: var(--primary);
 }
 
+/* --- Android-Parity Auth UI --- */
+#auth-wrapper {
+    position: fixed;
+    inset: 0;
+    background: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.auth-box-android {
+    width: 100%;
+    max-width: 440px;
+    padding: 24px;
+    text-align: center;
+}
+
+.brand-logo-android {
+    margin-bottom: 48px;
+}
+
+.green-box {
+    width: 72px;
+    height: 72px;
+    background: var(--primary);
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 32px;
+    border-radius: 4px;
+}
+
+.brand-logo-android h1 {
+    color: var(--primary);
+    font-size: 32px;
+    font-weight: 900;
+    margin-bottom: 4px;
+}
+
+.brand-logo-android p {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.auth-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: #000;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.auth-subtitle {
+    font-size: 16px;
+    color: var(--text-hint);
+    margin-bottom: 32px;
+    text-align: left;
+}
+
+.android-input-field {
+    margin-bottom: 16px;
+}
+
+.android-input-field input {
+    width: 100%;
+    padding: 18px 20px;
+    background: #F1F3F4;
+    border: 1px solid #E8EAED;
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+    transition: 0.2s;
+}
+
+.android-input-field input:focus {
+    border-color: var(--primary);
+    background: #fff;
+}
+
+.green-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.btn-android-primary {
+    width: 100%;
+    height: 60px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 18px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    letter-spacing: 1px;
+}
+
+.or-separator {
+    margin: 32px 0;
+    color: var(--text-hint);
+    font-size: 14px;
+    position: relative;
+}
+
+.btn-android-outline {
+    width: 100%;
+    height: 60px;
+    background: #fff;
+    border: 1px solid #E8EAED;
+    border-radius: 4px;
+    color: #000;
+    font-size: 16px;
+    font-weight: 900;
+    cursor: pointer;
+    letter-spacing: 1px;
+}
+
+.auth-footer-text {
+    margin-top: 48px;
+    color: var(--text-hint);
+}
+
+.auth-screen-android {
+    display: none;
+}
+
+.auth-screen-android.active {
+    display: block;
+    animation: fadeIn 0.4s ease;
+}
+
 /* --- Auth Styling --- */
 #auth-wrapper {
     position: fixed;

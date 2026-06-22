@@ -14,63 +14,65 @@
 
 <body>
 
-    <div id="auth-wrapper" class="hidden">
-        <div class="auth-box">
-            <div class="logo" style="justify-content: center; margin-bottom: 32px;">
-                <i class="fas fa-leaf"></i>
-                <span>ShareBite</span>
+    <div id="auth-wrapper">
+        <div class="auth-box-android">
+            <div class="brand-logo-android">
+                <div class="green-box">
+                    <i class="fas fa-arrows-alt"></i> <!-- Placeholder for the double arrow logo -->
+                </div>
+                <h1>ShareBite</h1>
+                <p>Share food. Build community.</p>
             </div>
 
             <!-- Login Screen -->
-            <div id="login-screen" class="auth-screen active">
+            <div id="login-screen" class="auth-screen-android active">
                 <form id="login-form">
-                    <h2 style="margin-bottom: 8px;">Welcome Back</h2>
-                    <p style="color: var(--text-secondary); margin-bottom: 24px;">Sign in to continue</p>
+                    <h2 class="auth-title">Welcome back</h2>
+                    <p class="auth-subtitle">Login to continue sharing</p>
 
-                    <div class="form-group">
-                        <input type="email" id="login-email" placeholder="Email Address" required>
+                    <div class="android-input-field">
+                        <input type="email" id="login-email" placeholder="Email address" required>
                     </div>
-                    <div class="form-group">
+                    <div class="android-input-field">
                         <input type="password" id="login-password" placeholder="Password" required>
                     </div>
-                    <button type="submit" id="btn-login" class="btn-primary" style="margin-bottom: 16px;">LOGIN</button>
+
+                    <div style="text-align: right; margin-bottom: 24px;">
+                        <a href="#" class="green-link">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" id="btn-login" class="btn-android-primary">LOGIN</button>
                 </form>
 
-                <div style="text-align: center; margin-bottom: 20px; color: var(--text-hint);">OR</div>
+                <div class="or-separator">or</div>
 
-                <button id="btn-google-login" class="btn-google">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"
-                        style="margin-right: 12px;">
-                    Continue with G-mail
-                </button>
+                <button id="btn-google-login" class="btn-android-outline">CONTINUE WITH GOOGLE</button>
 
-                <p style="margin-top: 24px; text-align: center; font-size: 14px;">
-                    Don't have an account? <a href="#" id="go-signup"
-                        style="color: var(--primary); font-weight: 700; text-decoration: none;">Sign Up</a>
+                <p class="auth-footer-text">
+                    Don't have an account? <a href="#" id="go-signup" class="green-link">Sign Up</a>
                 </p>
             </div>
 
             <!-- Signup Screen -->
-            <div id="signup-screen" class="auth-screen">
+            <div id="signup-screen" class="auth-screen-android">
                 <form id="signup-form">
-                    <h2 style="margin-bottom: 8px;">Create Account</h2>
-                    <p style="color: var(--text-secondary); margin-bottom: 24px;">Join the community</p>
+                    <h2 class="auth-title">Create account</h2>
+                    <p class="auth-subtitle">Join the community</p>
 
-                    <div class="form-group">
-                        <input type="text" id="signup-name" placeholder="Full Name" required>
+                    <div class="android-input-field">
+                        <input type="text" id="signup-name" placeholder="Full name" required>
                     </div>
-                    <div class="form-group">
-                        <input type="email" id="signup-email" placeholder="Email Address" required>
+                    <div class="android-input-field">
+                        <input type="email" id="signup-email" placeholder="Email address" required>
                     </div>
-                    <div class="form-group">
+                    <div class="android-input-field">
                         <input type="password" id="signup-password" placeholder="Password" required>
                     </div>
-                    <button type="submit" id="btn-signup" class="btn-primary">SIGN UP</button>
+                    <button type="submit" id="btn-signup" class="btn-android-primary">SIGN UP</button>
                 </form>
 
-                <p style="margin-top: 24px; text-align: center; font-size: 14px;">
-                    Already have an account? <a href="#" id="go-login"
-                        style="color: var(--primary); font-weight: 700; text-decoration: none;">Login</a>
+                <p class="auth-footer-text">
+                    Already have an account? <a href="#" id="go-login" class="green-link">Login</a>
                 </p>
             </div>
         </div>
