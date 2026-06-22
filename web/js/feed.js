@@ -98,50 +98,116 @@ function createFoodCard(item) {
     return div;
 }
 
-function openFoodDetail(item) {
+let detailTimer = null;
+
+export function openFoodDetail(item) {
     const screen = document.getElementById('food-detail-screen');
-    const timeLeft = (item.expiryTimeMillis || 0) - Date.now();
-    const hrs = Math.floor(timeLeft / 3600000);
-    const mins = Math.floor((timeLeft % 3600000) / 60000);
-    const timeText = timeLeft > 0 ? `${hrs}h ${mins}m left` : 'Expired';
+    
+    function updateTimer() {
+        const timeLeft = (item.expiryTimeMillis || 0) - Date.now();
+        const timeEl = document.getElementById('detail-timer-val');
+        if (!timeEl) return;
+
+        if (timeLeft <= 0) {
+            timeEl.textContent = "EXPIRED";
+            timeEl.style.color = "#ff4444";
+            return;
+        }
+
+        const hrs = Math.floor(timeLeft / 3600000);
+        const mins = Math.floor((timeLeft % 3600000) / 60000);
+        const secs = Math.floor((timeLeft % 60000) / 1000);
+        timeEl.textContent = `${hrs.toString().padStart(2, '0')} : ${mins.toString().padStart(2, '0')} : ${secs.toString().padStart(2, '0')}`;
+    }
+
+    if (detailTimer) clearInterval(detailTimer);
+    detailTimer = setInterval(updateTimer, 1000);
+
+    const donorInitial = (item.donorName || 'U').charAt(0).toUpperCase();
 
     screen.innerHTML = `
-        <div class="detail-header-android">
-            <button onclick="window.navigateTo('home')" class="btn-back"><i class="fas fa-arrow-left"></i></button>
-            <h1>Details</h1>
+        <div class="detail-image-box">
+            <button onclick="window.navigateTo('home')" class="btn-back-detail"><i class="fas fa-arrow-left"></i></button>
+            ${item.imageUri ? `<img src="${item.imageUri}">` : `<div class="img-placeholder-lg" style="height:100%; display:flex; align-items:center; justify-content:center; font-size:80px; background:#222;">🍲</div>`}
         </div>
-        <div class="detail-content-android">
-            <div class="detail-image-box">
-                ${item.imageUri ? `<img src="${item.imageUri}">` : `<div class="img-placeholder-lg">🍲</div>`}
-                <div class="detail-category-badge">${item.category}</div>
-            </div>
-            <div class="detail-info-box">
-                <h2 class="detail-title">${item.foodName}</h2>
-                <div class="detail-meta-row">
-                    <span><i class="fas fa-box"></i> ${item.quantity}</span>
-                    <span style="color:var(--error); font-weight:800;"><i class="fas fa-clock"></i> ${timeText}</span>
+
+        <div class="detail-body">
+            <div class="detail-title-flex">
+                <div>
+                    <h2>${item.foodName}</h2>
+                    <div style="margin-top:8px;">
+                        <span class="cat-chip active" style="font-size:12px; padding:6px 16px;">${item.category}</span>
+                    </div>
                 </div>
-                <p class="detail-location"><i class="fas fa-map-marker-alt"></i> ${item.location || 'Coimbatore, TN'}</p>
-                <div class="detail-description-section">
-                    <h3>Description</h3>
-                    <p>${item.description || 'No description provided.'}</p>
-                </div>
-                <div class="detail-action-row">
-                    <button id="btn-claim-final" class="btn btn-claim-main">CLAIM FOOD</button>
-                    <button onclick="window.navigateTo('message')" class="btn btn-msg-icon"><i class="fas fa-paper-plane"></i></button>
+                <div class="expiry-countdown">
+                    <span class="label">Expires in</span>
+                    <span class="time" id="detail-timer-val">00 : 00 : 00</span>
+                    <div style="display:flex; justify-content:space-between; font-size:9px; color:#666; margin-top:2px;">
+                        <span>hr</span><span>min</span><span>sec</span>
+                    </div>
                 </div>
             </div>
+
+            <div class="detail-info-grid" style="margin-top:24px;">
+                <div class="detail-card">
+                    <i class="fas fa-egg"></i>
+                    <div class="detail-card-info">
+                        <span class="label">Quantity</span>
+                        <span class="value">${item.quantity}</span>
+                    </div>
+                </div>
+                <div class="detail-card">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div class="detail-card-info">
+                        <span class="label">Location</span>
+                        <span class="value">${item.location || 'Poonamallee'}</span>
+                    </div>
+                </div>
+                <div class="detail-card">
+                    <i class="fas fa-clock"></i>
+                    <div class="detail-card-info">
+                        <span class="label">Pickup window</span>
+                        <span class="value">Now · ${item.location || 'Poonamallee'}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:20px;">
+                <span class="cat-chip" style="background:#E8F5E9; color:#2E7D32; border:none; padding:4px 12px; font-size:11px;">halal</span>
+            </div>
+
+            <h3 class="detail-section-title">About this listing</h3>
+            <p style="color:#aaa; line-height:1.6; font-size:15px;">${item.description || 'Tasty'}</p>
+
+            <h3 class="detail-section-title">Donor</h3>
+            <div class="donor-card">
+                <div class="donor-avatar">${donorInitial}</div>
+                <div class="donor-details">
+                    <h4>${item.donorName || 'User'}</h4>
+                    <p>⭐ 4.9 · 23 donations</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-actions-fixed">
+            <button id="btn-claim-final" class="btn-detail-main btn-detail-claim">CLAIM FOOD</button>
+            <button id="btn-msg-donor" class="btn-detail-main btn-detail-msg">
+                <i class="far fa-comment-alt"></i> MESSAGE DONOR
+            </button>
         </div>
     `;
 
-    // Reset visibility logic
+    // Initialize timer immediately
+    updateTimer();
+
+    // Show screen
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     screen.classList.add('active');
 
-    const claimBtn = screen.querySelector('#btn-claim-final');
+    const claimBtn = document.getElementById('btn-claim-final');
     if (item.isClaimed) {
         claimBtn.disabled = true;
-        claimBtn.classList.add('btn-disabled');
+        claimBtn.style.opacity = '0.5';
         claimBtn.textContent = 'CLAIMED';
     } else {
         claimBtn.onclick = () => {
@@ -149,4 +215,8 @@ function openFoodDetail(item) {
             window.navigateTo('home');
         };
     }
+
+    document.getElementById('btn-msg-donor').onclick = () => {
+        window.navigateTo('message');
+    };
 }
