@@ -269,7 +269,7 @@ jobs:
     if: always()
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://192321178.github.io/pdd/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -284,7 +284,7 @@ jobs:
           python3 << 'PYEOF'
           import os
           from openpyxl import Workbook
-          from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+          from openpyxl.styles import Font, PatternFill
           wb = Workbook(); ws = wb.active; ws.title = "Combined Full Report"
           for i, h in enumerate(["Category", "Total Tests", "Passed", "Status"], 1):
               c = ws.cell(1, i, h); c.font = Font(bold=True, color="FFFFFF"); c.fill = PatternFill("solid", start_color="263238")
@@ -300,21 +300,29 @@ jobs:
           name: full-e2e-report
           path: test-results/ShareBite_Full_E2E_Report.xlsx
 
-      - name: Prepare Deployment
+      - name: Deploy Web to gh-pages branch
         run: |
-          mkdir -p public
-          cp -r web/* public/
-          touch public/.nojekyll
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './public'
-      - name: Final Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Build the deploy folder
+          mkdir -p deploy_out
+          cp -r web/* deploy_out/
+          touch deploy_out/.nojekyll
+          
+          # Push to gh-pages branch
+          git fetch origin gh-pages 2>/dev/null || true
+          git worktree add --orphan /tmp/gh-pages-branch 2>/dev/null || git worktree add /tmp/gh-pages-branch gh-pages 2>/dev/null || true
+          
+          # Safest approach: init a fresh repo in tmp and force push
+          cd /tmp
+          mkdir gh_deploy && cd gh_deploy
+          git init
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          cp -r $GITHUB_WORKSPACE/deploy_out/. .
+          git add -A
+          git commit -m "Deploy ShareBite web app to GitHub Pages [skip ci]"
+          git push origin HEAD:gh-pages --force
 
       - name: Summary
         run: |
