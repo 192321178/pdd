@@ -8,11 +8,7 @@ export function navigateTo(screenId) {
     if (!SCREENS.includes(screenId)) return;
 
     // Toggle screen visibility
-    SCREENS.forEach(id => {
-        const el = document.getElementById(`${id}-screen`);
-        if (el) el.classList.remove('active');
-    });
-
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(`${screenId}-screen`);
     if (target) target.classList.add('active');
 
@@ -27,14 +23,9 @@ export function navigateTo(screenId) {
     if (screenId === 'profile') window.loadProfile?.();
 }
 
-export function showToast(message, type = 'info') {
-    // Simple alert-based toast for performance, or keep DOM version if needed
-    alert(message);
-}
-
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Navigation Routing logic
+    // 1. Navigation Routing (Sidebar)
     document.body.addEventListener('click', e => {
         const navItem = e.target.closest('[data-screen]');
         if (navItem) {
@@ -43,7 +34,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Logout Handler (Now located in Profile Fragment)
+    // 2. Auth Screen Toggles
+    document.getElementById('go-signup')?.addEventListener('click', e => {
+        e.preventDefault();
+        document.getElementById('login-screen').classList.remove('active');
+        document.getElementById('signup-screen').classList.add('active');
+    });
+    document.getElementById('go-login')?.addEventListener('click', e => {
+        e.preventDefault();
+        document.getElementById('signup-screen').classList.remove('active');
+        document.getElementById('login-screen').classList.add('active');
+    });
+
+    // 3. Logout Logic
     document.body.addEventListener('click', e => {
         if (e.target.closest('#logout-btn')) {
             signOut(auth).then(() => {
@@ -52,19 +55,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Authentication Guard
+    // 4. Authentication State Guard
     onAuthStateChanged(auth, user => {
         const authWrapper = document.getElementById('auth-wrapper');
         const appWrapper = document.querySelector('.app-wrapper');
 
         if (user) {
-            if (authWrapper) authWrapper.classList.add('hidden');
-            if (appWrapper) appWrapper.classList.remove('hidden');
+            authWrapper.classList.add('hidden');
+            appWrapper.classList.remove('hidden');
             window.currentUser = user;
             navigateTo('home');
         } else {
-            if (appWrapper) appWrapper.classList.add('hidden');
-            if (authWrapper) authWrapper.classList.remove('hidden');
+            appWrapper.classList.add('hidden');
+            authWrapper.classList.remove('hidden');
+            document.getElementById('login-screen').classList.add('active');
+            document.getElementById('signup-screen').classList.remove('active');
         }
     });
 });
