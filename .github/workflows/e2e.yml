@@ -264,7 +264,7 @@ jobs:
     if: always()
     environment:
       name: github-pages
-      url: https://192321178.github.io/pdd/
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -295,24 +295,14 @@ jobs:
           name: full-e2e-report
           path: test-results/ShareBite_Full_E2E_Report.xlsx
 
-      - name: Build Web
-        run: |
-          mkdir -p deployment_ready
-          cp -r web/* deployment_ready/
-          touch deployment_ready/.nojekyll
-
-      - name: Deploy Branch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./deployment_ready
-
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './web'
-
-      - name: Final Deploy
+      - name: Final Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
 
       - name: Summary
