@@ -305,21 +305,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Build the deploy folder
-          mkdir -p deploy_out
-          cp -r web/* deploy_out/
-          touch deploy_out/.nojekyll
+          # Prepare the deployment folder
+          mkdir -p $GITHUB_WORKSPACE/deploy_out
+          cp -r web/* $GITHUB_WORKSPACE/deploy_out/
+          touch $GITHUB_WORKSPACE/deploy_out/.nojekyll
           
-          # Push to gh-pages branch
-          git fetch origin gh-pages 2>/dev/null || true
-          git worktree add --orphan /tmp/gh-pages-branch 2>/dev/null || git worktree add /tmp/gh-pages-branch gh-pages 2>/dev/null || true
-          
-          # Safest approach: init a fresh repo in tmp and force push
+          # Safest deployment: init a fresh repo and force push to origin branch
           cd /tmp
           mkdir gh_deploy && cd gh_deploy
           git init
           git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          cp -r $GITHUB_WORKSPACE/deploy_out/. .
+          cp -r $GITHUB_WORKSPACE/deploy_out/* .
           git add -A
           git commit -m "Deploy ShareBite web app to GitHub Pages [skip ci]"
           git push origin HEAD:gh-pages --force
