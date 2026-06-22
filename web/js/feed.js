@@ -207,8 +207,10 @@ export function openFoodDetail(item) {
     const currentUser = auth.currentUser;
     const claimBtn = document.getElementById('btn-claim-final');
 
+    const donorUid = item.userUid || item.userUID;
+
     // Check if food belongs to current user
-    if (currentUser && item.userUid === currentUser.uid) {
+    if (currentUser && donorUid === currentUser.uid) {
         claimBtn.disabled = true;
         claimBtn.style.background = '#444';
         claimBtn.textContent = "YOU DONATED THIS";
@@ -233,43 +235,40 @@ export function openFoodDetail(item) {
                     claimedAt: Date.now()
                 });
 
-                // 2. Increment claimer's stats
-                const statsRef = ref(rtdb, `users/${currentUser.uid}/impact_stats`);
-                onValue(statsRef, snapshot => {
-                    const current = snapshot.val() || { claims: 0 };
-                    update(statsRef, { claims: (current.claims || 0) + 1 });
-                }, { onlyOnce: true });
+                // 🚀 STATS are dynamic now, no manual increment needed for claims!
+                // Calculated in profile.js by counting items where claimedByUid === user.uid
 
-                // 3. Send auto-message to donor
-                const chatId = currentUser.uid < item.userUid ? `${currentUser.uid}_${item.userUid}` : `${item.userUid}_${currentUser.uid}`;
-                const msgRef = push(ref(rtdb, `messages/${chatId}`));
-                const chatMetaRef = ref(rtdb, `user_chats/${item.userUid}/${currentUser.uid}`);
-                const myChatMetaRef = ref(rtdb, `user_chats/${currentUser.uid}/${item.userUid}`);
+                // 2. Send auto-message to donor
+                if (donorUid) {
+                    const chatId = currentUser.uid < donorUid ? `${currentUser.uid}_${donorUid}` : `${donorUid}_${currentUser.uid}`;
+                    const msgRef = push(ref(rtdb, `messages/${chatId}`));
 
-                const claimMsg = `Hi, I claimed your food - ${item.foodName} -. Thank you!`;
+                    const claimMsg = `Hi, I claimed your food - ${item.foodName} -. Thank you!`;
 
-                await set(msgRef, {
-                    senderId: currentUser.uid,
-                    text: claimMsg,
-                    timestamp: Date.now(),
-                    foodName: item.foodName
-                });
+                    await set(msgRef, {
+                        senderId: currentUser.uid,
+                        text: claimMsg,
+                        timestamp: Date.now(),
+                        foodName: item.foodName
+                    });
 
-                const meta = {
-                    otherUserName: currentUser.displayName || 'Receiver',
-                    lastMessage: claimMsg,
-                    timestamp: Date.now(),
-                    foodName: item.foodName
-                };
-                const myMeta = {
-                    otherUserName: item.donorName || item.userName || 'Donor',
-                    lastMessage: claimMsg,
-                    timestamp: Date.now(),
-                    foodName: item.foodName
-                };
+                    const meta = {
+                        otherUserName: currentUser.displayName || 'Receiver',
+                        lastMessage: claimMsg,
+                        timestamp: Date.now(),
+                        foodName: item.foodName
+                    };
+                    const myMeta = {
+                        otherUserName: item.donorName || item.userName || 'Donor',
+                        lastMessage: claimMsg,
+                        timestamp: Date.now(),
+                        foodName: item.foodName
+                    };
 
-                await update(ref(rtdb, `user_chats/${item.userUid}`), { [currentUser.uid]: meta });
-                await update(ref(rtdb, `user_chats/${currentUser.uid}`), { [item.userUid]: myMeta });
+                    const { update: updateDB } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+                    await updateDB(ref(rtdb, `user_chats/${donorUid}`), { [currentUser.uid]: meta });
+                    await updateDB(ref(rtdb, `user_chats/${currentUser.uid}`), { [donorUid]: myMeta });
+                }
 
                 alert('🎉 Food claimed successfully!');
                 window.navigateTo('home');

@@ -1,4 +1,4 @@
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { rtdb, auth } from "./firebase-config.js";
 
 export function initProfile() {
@@ -8,34 +8,49 @@ export function initProfile() {
 
         const nameEl = document.getElementById('profile-display-name');
         const avatarEl = document.querySelector('.profile-avatar-circle');
+        const locationEl = document.getElementById('profile-location');
 
-        const nameRef = ref(rtdb, `users/${user.uid}/displayName`);
-        const locationRef = ref(rtdb, `users/${user.uid}/location`);
+        // Real-time Name/Location listener
+        onValue(ref(rtdb, `users/${user.uid}`), snap => {
+            const data = snap.val() || {};
+            const name = data.name || user.displayName || user.email?.split('@')[0] || 'User';
+            const location = data.location || 'Coimbatore';
 
-        onValue(nameRef, snap => {
-            const name = snap.val() || user.displayName || user.email?.split('@')[0] || 'User';
             nameEl.textContent = name;
             avatarEl.textContent = name.charAt(0).toUpperCase();
+            if (locationEl) locationEl.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${location}`;
         });
 
-        // Load Stats
-        onValue(ref(rtdb, `users/${user.uid}/impact_stats`), snapshot => {
-            const stats = snapshot.val() || { donations: 0, claims: 0, kg_saved: 0.0, co2_reduced: 0.0 };
-            document.getElementById('stat-donations').textContent = stats.donations || 0;
-            document.getElementById('stat-claims').textContent = stats.claims || 0;
-            document.getElementById('stat-kg').textContent = (stats.kg_saved || 0.0).toFixed(1);
-            document.getElementById('stat-co2').textContent = (stats.co2_reduced || 0.0).toFixed(1);
+        // 🚀 DYNAMIC STATS (Matching ProfileFragment.kt logic)
+        onValue(ref(rtdb, 'food_items'), snapshot => {
+            let donations = 0;
+            let claims = 0;
+
+            snapshot.forEach(child => {
+                const item = child.val();
+                if (item.userUid === user.uid) donations++;
+                if (item.claimedByUid === user.uid || item.claimedBy === user.uid) claims++;
+            });
+
+            const foodKg = donations * 0.9;
+            const co2Kg = donations * 2.5;
+
+            document.getElementById('stat-donations').textContent = donations;
+            document.getElementById('stat-claims').textContent = claims;
+            document.getElementById('stat-kg').textContent = foodKg.toFixed(1);
+            document.getElementById('stat-co2').textContent = co2Kg.toFixed(1);
         });
 
-        // Leaderboard listener already in setup, but ensuring it's robust
         updateLeaderboard();
     };
 
+    // Modal logic
     const modal = document.getElementById('edit-profile-modal');
     document.addEventListener('click', e => {
-        if (e.target.closest('.profile-edit-btn') || e.target.closest('#btn-edit-profile')) {
-            modal.classList.remove('hidden');
+        if (e.target.id === 'btn-edit-profile' || e.target.closest('#btn-edit-profile')) {
             const user = auth.currentUser;
+            if (!user) return;
+            modal.classList.remove('hidden');
             document.getElementById('edit-name').value = document.getElementById('profile-display-name').textContent;
         }
         if (e.target.id === 'btn-cancel-edit') modal.classList.add('hidden');
@@ -45,17 +60,15 @@ export function initProfile() {
         const user = auth.currentUser;
         if (!user) return;
         const newName = document.getElementById('edit-name').value.trim();
-        const newLocation = document.getElementById('edit-location').value.trim();
+        const newLoc = document.getElementById('edit-location').value.trim();
 
-        if (newName) {
-            await set(ref(rtdb, `users/${user.uid}/displayName`), newName);
-            // Updating all items by this user is complex, but the leaderboard uses the user node directly
-        }
-        if (newLocation) {
-            await set(ref(rtdb, `users/${user.uid}/location`), newLocation);
-        }
+        const updates = {};
+        if (newName) updates.name = newName;
+        if (newLoc) updates.location = newLoc;
+        updates.email = user.email || "";
+
+        await set(ref(rtdb, `users/${user.uid}`), updates);
         modal.classList.add('hidden');
-        window.showToast?.('Profile updated!', 'success');
     });
 }
 
@@ -63,22 +76,25 @@ function updateLeaderboard() {
     const leaderboardList = document.getElementById('leaderboard-list');
     if (!leaderboardList) return;
 
-    onValue(ref(rtdb, 'users'), snapshot => {
-        const users = [];
+    onValue(ref(rtdb, 'food_items'), snapshot => {
+        const userStats = {}; // Map of UID -> { name, count }
+
         snapshot.forEach(child => {
-            const u = child.val();
-            const stats = u.impact_stats || { donations: 0, kg_saved: 0 };
-            users.push({
-                name: u.displayName || u.email?.split('@')[0] || 'User',
-                donations: stats.donations || 0,
-                kg: stats.kg_saved || 0
-            });
+            const item = child.val();
+            const uid = item.userUid || item.userUID || "unknown";
+            const name = item.donorName || item.userName || "User";
+
+            if (!userStats[uid]) {
+                userStats[uid] = { name: name, count: 0 };
+            }
+            userStats[uid].count++;
         });
 
-        users.sort((a, b) => (b.donations - a.donations) || (b.kg - a.kg));
+        const sorted = Object.values(userStats).sort((a, b) => b.count - a.count).slice(0, 5);
         leaderboardList.innerHTML = '';
-        users.slice(0, 5).forEach((u, index) => {
-            const medals = ['🥇', '🥈', '🥉', '🏅', '🏅'];
+        const medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"];
+
+        sorted.forEach((u, index) => {
             const row = document.createElement('div');
             row.className = 'leaderboard-item';
             row.style.display = 'flex';
@@ -87,10 +103,12 @@ function updateLeaderboard() {
             row.style.padding = '12px 0';
             row.style.borderBottom = '1px solid #222';
             row.innerHTML = `
-                <span style="font-size: 20px;">${medals[index] || '🏅'}</span>
+                <span style="font-size: 20px;">${medals[index] || '▪'}</span>
                 <div style="flex: 1;">
                     <span style="font-weight: 700; color: #fff; display: block;">${u.name}</span>
-                    <span style="font-size: 12px; color: #888;">${u.donations} donations · ${u.kg.toFixed(1)}kg</span>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 13px; color: var(--primary); font-weight:700;">${u.count} donations · ${(u.count * 0.9).toFixed(1)}kg</span>
                 </div>`;
             leaderboardList.appendChild(row);
         });
