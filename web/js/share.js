@@ -56,13 +56,26 @@ export function initShare() {
                 location: location || 'Coimbatore, TN',
                 imageUri: photoPreview.src || '',
                 userUid: user.uid,
-                userName: user.displayName || 'Donor',
+                userName: document.getElementById('profile-display-name')?.textContent || user.displayName || 'Donor',
+                donorName: document.getElementById('profile-display-name')?.textContent || user.displayName || 'Donor',
                 sharedAt: serverTimestamp(),
                 expiryTimeMillis: expiry,
                 isClaimed: false,
                 lat: 11.0168,
                 lng: 76.9558
             });
+
+            // Update user impact stats
+            const statsRef = ref(rtdb, `users/${user.uid}/impact_stats`);
+            onValue(statsRef, snapshot => {
+                const current = snapshot.val() || { donations: 0, kg_saved: 0.0, co2_reduced: 0.0 };
+                set(statsRef, {
+                    ...current,
+                    donations: (current.donations || 0) + 1,
+                    kg_saved: (current.kg_saved || 0.0) + 0.9, // Default impact per donation
+                    co2_reduced: (current.co2_reduced || 0.0) + 2.5
+                });
+            }, { onlyOnce: true });
 
             alert('🚀 Shared successfully!');
             window.navigateTo('home');

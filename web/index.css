@@ -681,7 +681,8 @@ body {
 
 /* --- High-Fidelity Food Detail (Android Parity) --- */
 .fragment-screen {
-    background: #121212 !important; /* Android Dark Background */
+    background: #121212 !important;
+    /* Android Dark Background */
     color: #fff !important;
     position: fixed;
     top: 0;
@@ -709,7 +710,7 @@ body {
     position: absolute;
     top: 20px;
     left: 20px;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     color: #fff;
     width: 40px;
     height: 40px;
@@ -867,4 +868,70 @@ body {
     align-items: center;
     justify-content: center;
     gap: 10px;
+}
+
+/* --- Android Style Modal --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content-android {
+    background: #fff;
+    width: 90%;
+    max-width: 400px;
+    padding: 24px;
+    border-radius: 8px;
+    color: #000;
+}
+
+.modal-content-android h2 {
+    font-size: 24px;
+    margin-bottom: 24px;
+}
+
+.modal-content-android label {
+    display: block;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.modal-content-android input {
+    border: none;
+    border-bottom: 1px solid #999;
+    width: 100%;
+    padding: 8px 0;
+    font-size: 18px;
+    margin-bottom: 24px;
+    outline: none;
+}
+
+.modal-content-android input:focus {
+    border-bottom: 2px solid var(--primary);
+}
+
+.modal-actions-android {
+    display: flex;
+    justify-content: flex-end;
+    gap: 20px;
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    font-weight: 700;
+    font-size: 16px;
+    padding: 8px;
+    cursor: pointer;
+    color: #666;
+}
+
+.btn-text.green {
+    color: var(--primary);
 }

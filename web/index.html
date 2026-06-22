@@ -284,7 +284,7 @@
 
                 <!-- Hidden Logout contained in Settings or directly here -->
                 <div class="logout-container-profile"
-                    style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+                    style="margin-top: 40px; border-top: 1px solid #333; padding-top: 20px;">
                     <button id="logout-btn" class="btn btn-logout-full"
                         style="color: var(--error); background: none; border: none; font-weight: 700; width: 100%; text-align: left;">
                         <i class="fas fa-sign-out-alt"></i> LOGOUT
@@ -296,6 +296,27 @@
             <div id="food-detail-screen" class="screen fragment-screen">
                 <!-- Data injected here -->
             </div>
+
+            <!-- 7. Edit Profile Modal (Android Style) -->
+            <div id="edit-profile-modal" class="modal-overlay hidden">
+                <div class="modal-content-android">
+                    <h2>Edit Profile</h2>
+                    <div class="android-input-field">
+                        <label>Name</label>
+                        <input type="text" id="edit-name" placeholder="Username">
+                    </div>
+                    <div class="android-input-field">
+                        <label>Location</label>
+                        <input type="text" id="edit-location" placeholder="Coimbatore">
+                    </div>
+                    <div class="modal-actions-android">
+                        <button id="btn-cancel-edit" class="btn-text">CANCEL</button>
+                        <button id="btn-save-edit" class="btn-text green">SAVE</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
 
         </main>
     </div>

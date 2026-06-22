@@ -1,26 +1,32 @@
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { auth } from "./firebase-config.js";
 
-const SCREENS = ['home', 'map', 'share', 'message', 'profile'];
+const SCREENS = ['home', 'map', 'share', 'message', 'profile', 'food-detail'];
 
 export function navigateTo(screenId) {
-    if (!SCREENS.includes(screenId)) return;
+    // If it's a sub-screen like detail, handle it separately or add to list
+    const isMain = ['home', 'map', 'share', 'message', 'profile'].includes(screenId);
 
-    // Hide all screens
-    document.querySelectorAll('.main-screen').forEach(s => {
+    // Hide ALL screens (both main and fragment)
+    document.querySelectorAll('.screen').forEach(s => {
         s.classList.remove('active');
     });
 
     // Show target
-    const target = document.getElementById(`${screenId}-screen`);
+    const target = (screenId === 'food-detail') ?
+        document.getElementById('food-detail-screen') :
+        document.getElementById(`${screenId}-screen`);
+
     if (target) {
         target.classList.add('active');
     }
 
     // Update sidebar active state
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const activeNav = document.querySelector(`[data-screen="${screenId}"]`);
-    if (activeNav) activeNav.classList.add('active');
+    if (isMain) {
+        const activeNav = document.querySelector(`[data-screen="${screenId}"]`);
+        if (activeNav) activeNav.classList.add('active');
+    }
 
     // Trigger section-specific logic
     if (screenId === 'map') {
@@ -31,6 +37,9 @@ export function navigateTo(screenId) {
         window.loadProfile?.();
     }
 }
+
+// Make globally available for onclick handlers in dynamically injected HTML
+window.navigateTo = navigateTo;
 
 export function setupApp() {
     // Auth state guard — runs once Firebase resolves
