@@ -28,8 +28,11 @@ export function initProfile() {
 
             snapshot.forEach(child => {
                 const item = child.val();
-                if (item.userUid === user.uid) donations++;
-                if (item.claimedByUid === user.uid || item.claimedBy === user.uid) claims++;
+                const dUid = item.userUid || item.userUID;
+                const cUid = item.claimedByUid || item.claimedBy;
+
+                if (dUid === user.uid) donations++;
+                if (cUid === user.uid) claims++;
             });
 
             const foodKg = donations * 0.9;

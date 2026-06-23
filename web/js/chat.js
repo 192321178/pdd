@@ -70,4 +70,12 @@ function formatTime(ts) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+// Listen for screen changes to reload chat list
+document.addEventListener('click', e => {
+    const navItem = e.target.closest('.nav-item');
+    if (navItem && navItem.getAttribute('data-screen') === 'message') {
+        loadChatList();
+    }
+});
+
 window.loadChatList = loadChatList;
