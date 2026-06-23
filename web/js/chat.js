@@ -165,11 +165,30 @@ function formatTime(ts) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-// Listen for screen changes to reload chat list
+// 🚀 Check if we were redirected from a food item and need to auto-open/repair metadata
 document.addEventListener('click', e => {
     const navItem = e.target.closest('.nav-item');
     if (navItem && navItem.getAttribute('data-screen') === 'message') {
-        loadChatList();
+        const autoOpen = window.activeClaimChat;
+        if (autoOpen && autoOpen.isAutoOpen) {
+            // Repair metadata if missing from inbox
+            const user = auth.currentUser;
+            if (user) {
+                const metaRef = ref(rtdb, `user_chats/${user.uid}/${autoOpen.chatId}`);
+                set(metaRef, {
+                    chatId: autoOpen.chatId,
+                    otherUserId: autoOpen.donorId,
+                    otherUserName: autoOpen.donorName,
+                    foodName: autoOpen.foodName,
+                    lastMessage: "Hi, I'm interested in this!",
+                    timestamp: Date.now()
+                });
+            }
+            openChatDetail(autoOpen);
+            delete window.activeClaimChat; // Clear after use
+        } else {
+            loadChatList();
+        }
     }
 });
 
