@@ -59,13 +59,66 @@ export function loadChatList() {
 
 function openChatDetail(chat) {
     if (!chat.chatId) return;
-    window.showToast?.(`Connecting to ${chat.otherUserName}...`, 'info');
-    // Store chatId globally or in window for Chat screen
-    window.activeChatId = chat.chatId;
-    window.activeChatName = chat.otherUserName;
-    window.activeFoodName = chat.foodName;
-    window.navigateTo('message'); // Navigate to the message screen
+
+    // UI Update - Show Chat Header
+    const chatTitle = document.querySelector('.chat-title-info h3');
+    const chatSub = document.querySelector('.chat-title-info p');
+    if (chatTitle) chatTitle.textContent = chat.otherUserName;
+    if (chatSub) chatSub.textContent = `Regarding: ${chat.foodName}`;
+
+    currentChatId = chat.chatId;
+    loadMessages(chat.chatId);
 }
+
+function loadMessages(chatId) {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (!messagesContainer) return;
+
+    if (messagesUnsub) messagesUnsub(); // Clean up old listener
+
+    messagesUnsub = onValue(ref(rtdb, `chats/${chatId}`), snapshot => {
+        messagesContainer.innerHTML = '';
+        if (!snapshot.exists()) return;
+
+        snapshot.forEach(child => {
+            const msg = child.val();
+            const div = document.createElement('div');
+            const isMe = msg.senderId === auth.currentUser.uid;
+            div.className = `message ${isMe ? 'sent' : 'received'}`;
+            div.innerHTML = `
+                <div class="message-content">${msg.message}</div>
+                <div class="message-time">${formatTime(msg.timestamp)}</div>
+            `;
+            messagesContainer.appendChild(div);
+        });
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
+}
+
+// Global Send Message Function
+window.sendMessage = async () => {
+    const input = document.getElementById('chat-input-field');
+    const user = auth.currentUser;
+    if (!input || !user || !currentChatId || !input.value.trim()) return;
+
+    const text = input.value.trim();
+    const now = Date.now();
+    const msgRef = push(ref(rtdb, `chats/${currentChatId}`));
+
+    try {
+        await set(msgRef, {
+            messageId: msgRef.key,
+            senderId: user.uid,
+            senderName: user.displayName || user.email?.split('@')[0] || "User",
+            message: text,
+            timestamp: now
+        });
+        input.value = '';
+    } catch (err) {
+        console.error(err);
+        window.showToast?.("Failed to send message", "error");
+    }
+};
 
 function formatTime(ts) {
     if (!ts) return '';
@@ -81,4 +134,6 @@ document.addEventListener('click', e => {
     }
 });
 
+// Internal helper for global accessibility
 window.loadChatList = loadChatList;
+window.openChatDetail = openChatDetail;
