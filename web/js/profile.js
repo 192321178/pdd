@@ -80,17 +80,18 @@ function updateLeaderboard() {
     if (!leaderboardList) return;
 
     onValue(ref(rtdb, 'food_items'), snapshot => {
-        const userStats = {}; // Map of UID -> { name, count }
+        const userStats = {}; // Map of UID or Name -> { name, count }
 
         snapshot.forEach(child => {
             const item = child.val();
-            const uid = item.userUid || item.userUID || "unknown";
-            const name = item.donorName || item.userName || "User";
+            const uid = item.userUid || item.userUID || "";
+            const name = item.userName || "User";
 
-            if (!userStats[uid]) {
-                userStats[uid] = { name: name, count: 0 };
+            const key = uid ? uid : name;
+            if (!userStats[key]) {
+                userStats[key] = { name: name, count: 0 };
             }
-            userStats[uid].count++;
+            userStats[key].count++;
         });
 
         const sorted = Object.values(userStats).sort((a, b) => b.count - a.count).slice(0, 5);
@@ -103,12 +104,12 @@ function updateLeaderboard() {
             row.style.display = 'flex';
             row.style.alignItems = 'center';
             row.style.gap = '12px';
-            row.style.padding = '12px 0';
-            row.style.borderBottom = '1px solid #222';
+            row.style.padding = '14px 0';
+            row.style.borderBottom = '1px solid #eee';
             row.innerHTML = `
                 <span style="font-size: 20px;">${medals[index] || '▪'}</span>
                 <div style="flex: 1;">
-                    <span style="font-weight: 700; color: #fff; display: block;">${u.name}</span>
+                    <span style="font-weight: 700; color: #000; display: block;">${u.name}</span>
                 </div>
                 <div style="text-align: right;">
                     <span style="font-size: 13px; color: var(--primary); font-weight:700;">${u.count} donations · ${(u.count * 0.9).toFixed(1)}kg</span>

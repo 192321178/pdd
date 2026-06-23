@@ -256,21 +256,26 @@ export function openFoodDetail(item) {
                             foodName: item.foodName
                         });
 
-                        const meta = {
+                        // 🚀 Alignment with com.sharebite.fragments.ChatPreview
+                        const metaForDonor = {
+                            chatId: chatId,
+                            otherUserId: currentUser.uid,
                             otherUserName: currentUser.displayName || 'Receiver',
                             lastMessage: claimMsg,
                             timestamp: Date.now(),
                             foodName: item.foodName
                         };
-                        const myMeta = {
-                            otherUserName: item.donorName || item.userName || 'Donor',
+                        const metaForMe = {
+                            chatId: chatId,
+                            otherUserId: donorUid,
+                            otherUserName: item.userName || 'Donor',
                             lastMessage: claimMsg,
                             timestamp: Date.now(),
                             foodName: item.foodName
                         };
 
-                        await update(ref(rtdb, `user_chats/${donorUid}`), { [currentUser.uid]: meta });
-                        await update(ref(rtdb, `user_chats/${currentUser.uid}`), { [donorUid]: myMeta });
+                        await update(ref(rtdb, `user_chats/${donorUid}`), { [currentUser.uid]: metaForDonor });
+                        await update(ref(rtdb, `user_chats/${currentUser.uid}`), { [donorUid]: metaForMe });
                     }
 
                 } catch (err) {
