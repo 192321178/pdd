@@ -73,7 +73,11 @@ export function setupApp() {
 
         // Logout
         if (e.target.closest('#logout-btn')) {
-            signOut(auth).then(() => window.location.reload()).catch(console.error);
+            signOut(auth).then(() => {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.reload();
+            }).catch(console.error);
         }
     });
 
