@@ -296,17 +296,16 @@ export function openFoodDetail(item) {
             const donorId = item.userUid || item.userUID;
             const chatId = auth.currentUser.uid < donorId ? `${auth.currentUser.uid}_${donorId}` : `${donorId}_${auth.currentUser.uid}`;
 
+            // 🚀 Universal logic for ALL donors and ALL food items
             window.activeClaimChat = {
                 chatId: chatId,
-                otherUserName: item.userName || 'Donor',
-                foodName: item.foodName
+                donorId: donorId,
+                donorName: item.userName || item.donorName || 'Donor',
+                foodName: item.foodName,
+                isAutoOpen: true // 🚀 Triggers the 'Doctor' repair in chat.js
             };
 
             window.navigateTo('message');
-            // Small delay to ensure screen switch is done before opening detail
-            setTimeout(() => {
-                if (window.openChatDetail) window.openChatDetail(window.activeClaimChat);
-            }, 100);
         };
     }
 }
