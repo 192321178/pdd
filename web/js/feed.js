@@ -273,20 +273,21 @@ export function openFoodDetail(item) {
                         await update(ref(rtdb, `user_chats/${currentUser.uid}`), { [donorUid]: myMeta });
                     }
 
-                    alert('🎉 Food claimed successfully!');
-                    window.navigateTo('home');
                 } catch (err) {
                     console.error(err);
                     alert('Error claiming food.');
                 }
+
+                alert('🎉 Food claimed successfully!');
+                window.navigateTo('home');
             };
         }
     }
 
     if (msgBtn) {
-        msgBtn.onclick = () => {
-            if (!currentUser) return window.navigateTo('profile');
+        msgBtn.addEventListener('click', () => {
+            if (!auth.currentUser) return window.navigateTo('profile');
             window.navigateTo('message');
-        };
+        });
     }
 }
