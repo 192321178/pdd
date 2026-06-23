@@ -202,12 +202,20 @@ export function openFoodDetail(item) {
     if (currentUser && donorUid === currentUser.uid) {
         claimBtn.disabled = true;
         claimBtn.style.opacity = '0.5';
-        claimBtn.textContent = "YOU DONATED THIS";
+        claimBtn.textContent = "YOUR DONATION";
         if (msgBtn) msgBtn.style.display = 'none'; // Cannot message self
     } else if (item.isClaimed) {
         claimBtn.disabled = true;
         claimBtn.style.opacity = '0.5';
         claimBtn.textContent = 'ALREADY CLAIMED';
+
+        // 🚀 ONLY the person who claimed it can message the donor
+        const claimerUid = item.claimedByUid || item.claimedBy;
+        if (currentUser && currentUser.uid === claimerUid) {
+            if (msgBtn) msgBtn.style.display = 'inline-flex';
+        } else {
+            if (msgBtn) msgBtn.style.display = 'none';
+        }
     } else {
         claimBtn.onclick = async () => {
             if (!currentUser) return window.navigateTo('profile');
