@@ -11,7 +11,11 @@ export function initChat() {
 export function loadChatList() {
     const user = auth.currentUser;
     const chatList = document.getElementById('chat-list');
-    if (!user || !chatList) return;
+    const chatDetail = document.getElementById('chat-detail-view');
+    if (!user || !chatList || !chatDetail) return;
+
+    chatList.classList.remove('hidden');
+    chatDetail.classList.add('hidden');
 
     onValue(ref(rtdb, `user_chats/${user.uid}`), snapshot => {
         chatList.innerHTML = '';
@@ -60,6 +64,11 @@ export function loadChatList() {
 function openChatDetail(chat) {
     if (!chat.chatId) return;
 
+    const chatList = document.getElementById('chat-list');
+    const chatDetail = document.getElementById('chat-detail-view');
+    if (chatList) chatList.classList.add('hidden');
+    if (chatDetail) chatDetail.classList.remove('hidden');
+
     // UI Update - Show Chat Header
     const chatTitle = document.querySelector('.chat-title-info h3');
     const chatSub = document.querySelector('.chat-title-info p');
@@ -69,6 +78,15 @@ function openChatDetail(chat) {
     currentChatId = chat.chatId;
     loadMessages(chat.chatId);
 }
+
+window.backToInbox = () => {
+    const chatList = document.getElementById('chat-list');
+    const chatDetail = document.getElementById('chat-detail-view');
+    if (chatList) chatList.classList.remove('hidden');
+    if (chatDetail) chatDetail.classList.add('hidden');
+    currentChatId = null;
+    if (messagesUnsub) messagesUnsub();
+};
 
 function loadMessages(chatId) {
     const messagesContainer = document.getElementById('chat-messages');
@@ -84,10 +102,21 @@ function loadMessages(chatId) {
             const msg = child.val();
             const div = document.createElement('div');
             const isMe = msg.senderId === auth.currentUser.uid;
-            div.className = `message ${isMe ? 'sent' : 'received'}`;
+
+            // Layout logic for bubbles
+            div.style.alignSelf = isMe ? 'flex-end' : 'flex-start';
+            div.style.background = isMe ? 'var(--primary)' : '#fff';
+            div.style.color = isMe ? '#fff' : '#000';
+            div.style.padding = '10px 16px';
+            div.style.borderRadius = '16px';
+            div.style.maxWidth = '70%';
+            div.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+            div.style.fontSize = '14px';
+            div.style.position = 'relative';
+
             div.innerHTML = `
-                <div class="message-content">${msg.message}</div>
-                <div class="message-time">${formatTime(msg.timestamp)}</div>
+                <div>${msg.message}</div>
+                <div style="font-size: 10px; opacity: 0.7; margin-top: 4px; text-align: right;">${formatTime(msg.timestamp)}</div>
             `;
             messagesContainer.appendChild(div);
         });

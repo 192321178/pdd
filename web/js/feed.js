@@ -291,9 +291,22 @@ export function openFoodDetail(item) {
     }
 
     if (msgBtn) {
-        msgBtn.addEventListener('click', () => {
+        msgBtn.onclick = () => {
             if (!auth.currentUser) return window.navigateTo('profile');
+            const donorId = item.userUid || item.userUID;
+            const chatId = auth.currentUser.uid < donorId ? `${auth.currentUser.uid}_${donorId}` : `${donorId}_${auth.currentUser.uid}`;
+
+            window.activeClaimChat = {
+                chatId: chatId,
+                otherUserName: item.userName || 'Donor',
+                foodName: item.foodName
+            };
+
             window.navigateTo('message');
-        });
+            // Small delay to ensure screen switch is done before opening detail
+            setTimeout(() => {
+                if (window.openChatDetail) window.openChatDetail(window.activeClaimChat);
+            }, 100);
+        };
     }
 }

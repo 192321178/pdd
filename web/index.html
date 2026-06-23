@@ -249,16 +249,36 @@
                     <p class="header-small">INBOX</p>
                     <h1 class="header-large">Real-Time Messaging</h1>
                 </div>
-                <div id="chat-inbox" class="empty-state-container">
-                    <i class="fas fa-comments" style="font-size: 80px; color: #ccc; margin-bottom: 20px;"></i>
-                    <h3 style="color: #666;">Your Inbox is Empty</h3>
-                    <p style="color: #999;">When you start or receive a food claim, messages will appear here.</p>
-                </div>
-                <div id="chat-list" class="chat-list hidden">
+                <div id="chat-list" class="chat-list">
                     <!-- Chats will be listed here -->
                 </div>
-                <div id="chat-view" class="chat-view hidden">
-                    <!-- Chat detail view -->
+
+                <div id="chat-detail-view" class="chat-detail-view hidden"
+                    style="height: calc(100vh - 200px); display: flex; flex-direction: column;">
+                    <div class="chat-detail-header"
+                        style="padding: 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px;">
+                        <button onclick="window.backToInbox()"
+                            style="background:none; border:none; font-size: 20px; cursor: pointer;"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <div class="chat-title-info">
+                            <h3 style="margin:0; font-size: 18px;">Chat Name</h3>
+                            <p style="margin:0; font-size: 12px; color: var(--primary);">Regarding: Food</p>
+                        </div>
+                    </div>
+
+                    <div id="chat-messages"
+                        style="flex: 1; overflow-y: auto; padding: 20px; background: #f9f9f9; display: flex; flex-direction: column; gap: 12px;">
+                        <!-- Messages render here -->
+                    </div>
+
+                    <div class="chat-input-area"
+                        style="padding: 16px; background: #fff; border-top: 1px solid #eee; display: flex; gap: 12px;">
+                        <input type="text" id="chat-input-field" placeholder="Type a message..."
+                            style="flex: 1; border: 1px solid #ddd; border-radius: 20px; padding: 10px 20px; outline: none;">
+                        <button onclick="window.sendMessage()"
+                            style="background: var(--primary); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"><i
+                                class="fas fa-paper-plane"></i></button>
+                    </div>
                 </div>
             </section>
 
