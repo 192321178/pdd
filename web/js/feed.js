@@ -261,7 +261,7 @@ export function openFoodDetail(item) {
                         const metaForDonor = {
                             chatId: chatId,
                             otherUserId: currentUser.uid,
-                            otherUserName: currentUser.displayName || 'Receiver',
+                            otherUserName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Receiver',
                             lastMessage: claimMsg,
                             timestamp: Date.now(),
                             foodName: item.foodName
@@ -269,7 +269,7 @@ export function openFoodDetail(item) {
                         const metaForMe = {
                             chatId: chatId,
                             otherUserId: donorUid,
-                            otherUserName: item.userName || 'Donor',
+                            otherUserName: item.userName || item.donorName || 'Donor',
                             lastMessage: claimMsg,
                             timestamp: Date.now(),
                             foodName: item.foodName
