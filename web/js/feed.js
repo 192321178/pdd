@@ -197,17 +197,22 @@ export function openFoodDetail(item) {
 
     const donorUid = item.userUid || item.userUID;
     const msgBtn = document.getElementById('btn-msg-donor');
+    const claimBtnFinal = document.getElementById('btn-claim-final');
 
     // Check if food belongs to current user
     if (currentUser && donorUid === currentUser.uid) {
-        claimBtn.disabled = true;
-        claimBtn.style.opacity = '0.5';
-        claimBtn.textContent = "YOUR DONATION";
+        if (claimBtnFinal) {
+            claimBtnFinal.disabled = true;
+            claimBtnFinal.style.opacity = '0.5';
+            claimBtnFinal.textContent = "YOUR DONATION";
+        }
         if (msgBtn) msgBtn.style.display = 'none'; // Cannot message self
     } else if (item.isClaimed) {
-        claimBtn.disabled = true;
-        claimBtn.style.opacity = '0.5';
-        claimBtn.textContent = 'ALREADY CLAIMED';
+        if (claimBtnFinal) {
+            claimBtnFinal.disabled = true;
+            claimBtnFinal.style.opacity = '0.5';
+            claimBtnFinal.textContent = 'ALREADY CLAIMED';
+        }
 
         // 🚀 ONLY the person who claimed it can message the donor
         const claimerUid = item.claimedByUid || item.claimedBy;
@@ -217,67 +222,68 @@ export function openFoodDetail(item) {
             if (msgBtn) msgBtn.style.display = 'none';
         }
     } else {
-        claimBtn.onclick = async () => {
-            if (!currentUser) return window.navigateTo('profile');
+        if (claimBtnFinal) {
+            claimBtnFinal.onclick = async () => {
+                if (!currentUser) return window.navigateTo('profile');
 
-            const confirmClaim = confirm(`Claim ${item.foodName}? A message will be sent to the donor.`);
-            if (!confirmClaim) return;
+                const confirmClaim = confirm(`Claim ${item.foodName}? A message will be sent to the donor.`);
+                if (!confirmClaim) return;
 
-            try {
-                // 1. Mark as claimed in RTDB
-                const foodRef = ref(rtdb, `food_items/${item.foodId || item.id}`);
-                await update(foodRef, {
-                    isClaimed: true,
-                    claimedBy: currentUser.uid,
-                    claimedByUid: currentUser.uid,
-                    claimedAt: Date.now()
-                });
-
-                // 🚀 STATS are dynamic now, no manual increment needed for claims!
-                // Calculated in profile.js by counting items where claimedByUid === user.uid
-
-                // 2. Send auto-message to donor
-                if (donorUid) {
-                    const chatId = currentUser.uid < donorUid ? `${currentUser.uid}_${donorUid}` : `${donorUid}_${currentUser.uid}`;
-                    const msgRef = push(ref(rtdb, `messages/${chatId}`));
-
-                    const claimMsg = `Hi, I claimed your food - ${item.foodName} -. Thank you!`;
-
-                    await set(msgRef, {
-                        senderId: currentUser.uid,
-                        text: claimMsg,
-                        timestamp: Date.now(),
-                        foodName: item.foodName
+                try {
+                    // 1. Mark as claimed in RTDB (using 'id' for parity)
+                    const foodRef = ref(rtdb, `food_items/${item.id}`);
+                    await update(foodRef, {
+                        isClaimed: true,
+                        claimedBy: currentUser.uid,
+                        claimedByUid: currentUser.uid,
+                        claimedAt: Date.now()
                     });
 
-                    const meta = {
-                        otherUserName: currentUser.displayName || 'Receiver',
-                        lastMessage: claimMsg,
-                        timestamp: Date.now(),
-                        foodName: item.foodName
-                    };
-                    const myMeta = {
-                        otherUserName: item.donorName || item.userName || 'Donor',
-                        lastMessage: claimMsg,
-                        timestamp: Date.now(),
-                        foodName: item.foodName
-                    };
+                    // 🚀 STATS are dynamic now, no manual increment needed for claims!
+                    // Calculated in profile.js by counting items where claimedByUid === user.uid
 
-                    await update(ref(rtdb, `user_chats/${donorUid}`), { [currentUser.uid]: meta });
-                    await update(ref(rtdb, `user_chats/${currentUser.uid}`), { [donorUid]: myMeta });
+                    // 2. Send auto-message to donor
+                    if (donorUid) {
+                        const chatId = currentUser.uid < donorUid ? `${currentUser.uid}_${donorUid}` : `${donorUid}_${currentUser.uid}`;
+                        const msgRef = push(ref(rtdb, `messages/${chatId}`));
+
+                        const claimMsg = `Hi, I claimed your food - ${item.foodName} -. Thank you!`;
+
+                        await set(msgRef, {
+                            senderId: currentUser.uid,
+                            text: claimMsg,
+                            timestamp: Date.now(),
+                            foodName: item.foodName
+                        });
+
+                        const meta = {
+                            otherUserName: currentUser.displayName || 'Receiver',
+                            lastMessage: claimMsg,
+                            timestamp: Date.now(),
+                            foodName: item.foodName
+                        };
+                        const myMeta = {
+                            otherUserName: item.donorName || item.userName || 'Donor',
+                            lastMessage: claimMsg,
+                            timestamp: Date.now(),
+                            foodName: item.foodName
+                        };
+
+                        await update(ref(rtdb, `user_chats/${donorUid}`), { [currentUser.uid]: meta });
+                        await update(ref(rtdb, `user_chats/${currentUser.uid}`), { [donorUid]: myMeta });
+                    }
+
+                    alert('🎉 Food claimed successfully!');
+                    window.navigateTo('home');
+                } catch (err) {
+                    console.error(err);
+                    alert('Error claiming food.');
                 }
+            };
+        }
 
-                alert('🎉 Food claimed successfully!');
-                window.navigateTo('home');
-            } catch (err) {
-                console.error(err);
-                alert('Error claiming food.');
-            }
+        document.getElementById('btn-msg-donor').onclick = () => {
+            if (!currentUser) return window.navigateTo('profile');
+            window.navigateTo('message');
         };
     }
-
-    document.getElementById('btn-msg-donor').onclick = () => {
-        if (!currentUser) return window.navigateTo('profile');
-        window.navigateTo('message');
-    };
-}
