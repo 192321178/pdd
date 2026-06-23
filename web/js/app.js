@@ -48,13 +48,26 @@ export function setupApp() {
         const appWrapper = document.querySelector('.app-wrapper');
 
         if (user) {
+            // 🚀 ANTI-GHOST LOGIC: If user is "Ram" or session is stale/forced
+            if (user.email === 'ram@gmail.com' && !localStorage.getItem('user_approved_ram')) {
+                console.warn("Ghost session detected. Deep cleaning...");
+                signOut(auth).then(() => {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.reload();
+                });
+                return;
+            }
+
             // Authenticated: show main app
             if (authWrapper) authWrapper.style.display = 'none';
             if (appWrapper) { appWrapper.classList.remove('hidden'); appWrapper.style.display = 'flex'; }
             window.currentUser = user;
+            localStorage.setItem('user_approved_ram', 'true'); // Flag to prevent loop
             navigateTo('home');
         } else {
             // Unauthenticated: show login
+            localStorage.removeItem('user_approved_ram');
             if (appWrapper) appWrapper.style.display = 'none';
             if (authWrapper) authWrapper.style.display = 'flex';
             // Reset to login tab
