@@ -164,8 +164,9 @@ class FoodDetailActivity : AppCompatActivity() {
             btnClaim.text      = "Expired"
         }
 
-        val chatId   = "chat_${item.id}"
         val donorUid = item.userUid
+        // ✅ Unified chatId format: sorted uids like web
+        val chatId = if (myUid < donorUid) "${myUid}_$donorUid" else "${donorUid}_$myUid"
 
         btnMessage.setOnClickListener {
             if (myUid.isEmpty()) {
