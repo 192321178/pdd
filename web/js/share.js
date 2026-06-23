@@ -79,7 +79,7 @@ export function initShare() {
                 (document.getElementById('profile-display-name')?.textContent || user.displayName || 'Donor');
 
             await set(newItemRef, {
-                foodId: newItemRef.key,
+                id: newItemRef.key,
                 foodName,
                 category: activeCategory,
                 quantity,
@@ -89,7 +89,6 @@ export function initShare() {
                 imageUri: photoPreview.src || '',
                 userUid: user.uid,
                 userName: donorName,
-                donorName: donorName,
                 sharedAt: serverTimestamp(),
                 expiryTimeMillis: expiry,
                 isClaimed: false,
