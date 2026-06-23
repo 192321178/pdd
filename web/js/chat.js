@@ -14,10 +14,13 @@ export function loadChatList() {
     const chatDetail = document.getElementById('chat-detail-view');
     if (!user || !chatList || !chatDetail) return;
 
+    // 🚀 Ensure we start fresh
+    if (window.chatListUnsub) window.chatListUnsub();
+
     chatList.classList.remove('hidden');
     chatDetail.classList.add('hidden');
 
-    onValue(ref(rtdb, `user_chats/${user.uid}`), snapshot => {
+    window.chatListUnsub = onValue(ref(rtdb, `user_chats/${user.uid}`), snapshot => {
         chatList.innerHTML = '';
         if (!snapshot.exists()) {
             chatList.innerHTML = `
@@ -84,8 +87,15 @@ window.backToInbox = () => {
     const chatDetail = document.getElementById('chat-detail-view');
     if (chatList) chatList.classList.remove('hidden');
     if (chatDetail) chatDetail.classList.add('hidden');
+
     currentChatId = null;
-    if (messagesUnsub) messagesUnsub();
+    if (messagesUnsub) {
+        messagesUnsub();
+        messagesUnsub = null;
+    }
+
+    // 🚀 CRITICAL: Re-run loadChatList to ensure the inbox is fresh!
+    loadChatList();
 };
 
 function loadMessages(chatId) {
