@@ -195,16 +195,15 @@ export function openFoodDetail(item) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     screen.classList.add('active');
 
-    const currentUser = auth.currentUser;
-    const claimBtn = document.getElementById('btn-claim-final');
-
     const donorUid = item.userUid || item.userUID;
+    const msgBtn = document.getElementById('btn-msg-donor');
 
     // Check if food belongs to current user
     if (currentUser && donorUid === currentUser.uid) {
         claimBtn.disabled = true;
-        claimBtn.style.background = '#444';
+        claimBtn.style.opacity = '0.5';
         claimBtn.textContent = "YOU DONATED THIS";
+        if (msgBtn) msgBtn.style.display = 'none'; // Cannot message self
     } else if (item.isClaimed) {
         claimBtn.disabled = true;
         claimBtn.style.opacity = '0.5';
