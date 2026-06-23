@@ -58,10 +58,13 @@ export function loadChatList() {
 }
 
 function openChatDetail(chat) {
-    // This could be a floating panel or a full screen
-    // For "Real Web", let's use a centered wide modal or expand the card
-    // For now, let's use a prompt since the user wants a "Real Web Application"
+    if (!chat.chatId) return;
     window.showToast?.(`Connecting to ${chat.otherUserName}...`, 'info');
+    // Store chatId globally or in window for Chat screen
+    window.activeChatId = chat.chatId;
+    window.activeChatName = chat.otherUserName;
+    window.activeFoodName = chat.foodName;
+    window.navigateTo('message'); // Navigate to the message screen
 }
 
 function formatTime(ts) {

@@ -245,15 +245,16 @@ export function openFoodDetail(item) {
                     // 2. Send auto-message to donor
                     if (donorUid) {
                         const chatId = currentUser.uid < donorUid ? `${currentUser.uid}_${donorUid}` : `${donorUid}_${currentUser.uid}`;
-                        const msgRef = push(ref(rtdb, `messages/${chatId}`));
+                        const msgRef = push(ref(rtdb, `chats/${chatId}`)); // 🚀 Align with mobile "chats/" path
 
                         const claimMsg = `Hi, I claimed your food - ${item.foodName} -. Thank you!`;
 
                         await set(msgRef, {
+                            messageId: msgRef.key,
                             senderId: currentUser.uid,
-                            text: claimMsg,
-                            timestamp: Date.now(),
-                            foodName: item.foodName
+                            senderName: currentUser.displayName || currentUser.email?.split('@')[0] || "User",
+                            message: claimMsg, // 🚀 Align with mobile field name "message"
+                            timestamp: Date.now()
                         });
 
                         // 🚀 Alignment with com.sharebite.fragments.ChatPreview
@@ -274,8 +275,8 @@ export function openFoodDetail(item) {
                             foodName: item.foodName
                         };
 
-                        await update(ref(rtdb, `user_chats/${donorUid}`), { [currentUser.uid]: metaForDonor });
-                        await update(ref(rtdb, `user_chats/${currentUser.uid}`), { [donorUid]: metaForMe });
+                        await set(ref(rtdb, `user_chats/${donorUid}/${chatId}`), metaForDonor);
+                        await set(ref(rtdb, `user_chats/${currentUser.uid}/${chatId}`), metaForMe);
                     }
 
                 } catch (err) {
