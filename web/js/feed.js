@@ -281,9 +281,12 @@ export function openFoodDetail(item) {
                 }
             };
         }
+    }
 
-        document.getElementById('btn-msg-donor').onclick = () => {
+    if (msgBtn) {
+        msgBtn.onclick = () => {
             if (!currentUser) return window.navigateTo('profile');
             window.navigateTo('message');
         };
     }
+}
