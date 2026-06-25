@@ -1,82 +1,57 @@
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { auth } from "./firebase-config.js";
+import {
+    collection, query, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { auth, db } from "./firebase-config.js";
 
 const SCREENS = ['home', 'map', 'share', 'message', 'profile', 'food-detail'];
+let _unreadUnsub = null;
 
 export function navigateTo(screenId) {
-    // If it's a sub-screen like detail, handle it separately or add to list
     const isMain = ['home', 'map', 'share', 'message', 'profile'].includes(screenId);
 
-    // Hide ALL screens (both main and fragment)
-    document.querySelectorAll('.screen').forEach(s => {
-        s.classList.remove('active');
-    });
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
 
-    // Show target
-    const target = (screenId === 'food-detail') ?
-        document.getElementById('food-detail-screen') :
-        document.getElementById(`${screenId}-screen`);
+    const target = (screenId === 'food-detail')
+        ? document.getElementById('food-detail-screen')
+        : document.getElementById(`${screenId}-screen`);
 
-    if (target) {
-        target.classList.add('active');
-    }
+    if (target) target.classList.add('active');
 
-    // Update sidebar active state
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     if (isMain) {
-        const activeNav = document.querySelector(`[data-screen="${screenId}"]`);
-        if (activeNav) activeNav.classList.add('active');
+        document.querySelector(`[data-screen="${screenId}"]`)?.classList.add('active');
     }
 
-    // Trigger section-specific logic
-    if (screenId === 'map') {
-        setTimeout(() => window.loadMap?.(), 300);
-    } else if (screenId === 'message') {
-        window.loadChatList?.();
-    } else if (screenId === 'profile') {
-        window.loadProfile?.();
-    }
+    if (screenId === 'map') setTimeout(() => window.loadMap?.(), 300);
+    else if (screenId === 'message') window.loadChatList?.();
+    else if (screenId === 'profile') window.loadProfile?.();
 }
-
-// Make globally available for onclick handlers in dynamically injected HTML
 window.navigateTo = navigateTo;
 
 export function setupApp() {
-    // Auth state guard — runs once Firebase resolves
     onAuthStateChanged(auth, user => {
         const authWrapper = document.getElementById('auth-wrapper');
         const appWrapper = document.querySelector('.app-wrapper');
 
         if (user) {
-            // 🚀 ANTI-GHOST LOGIC: If user is "Ram" or session is stale/forced
-            if (user.email === 'ram@gmail.com' && !localStorage.getItem('user_approved_ram')) {
-                console.warn("Ghost session detected. Deep cleaning...");
-                signOut(auth).then(() => {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    window.location.reload();
-                });
-                return;
-            }
-
-            // Authenticated: show main app
             if (authWrapper) authWrapper.style.display = 'none';
             if (appWrapper) { appWrapper.classList.remove('hidden'); appWrapper.style.display = 'flex'; }
             window.currentUser = user;
-            localStorage.setItem('user_approved_ram', 'true'); // Flag to prevent loop
             navigateTo('home');
+            _subscribeUnreadBadge(user.uid);
         } else {
-            // Unauthenticated: show login
-            localStorage.removeItem('user_approved_ram');
+            if (_unreadUnsub) { _unreadUnsub(); _unreadUnsub = null; }
+            window.currentUser = null;
             if (appWrapper) appWrapper.style.display = 'none';
             if (authWrapper) authWrapper.style.display = 'flex';
-            // Reset to login tab
             document.getElementById('login-screen')?.classList.add('active');
             document.getElementById('signup-screen')?.classList.remove('active');
+            _setBellBadge(0);
         }
     });
 
-    // Sidebar navigation clicks
+    // Sidebar / bottom nav clicks
     document.addEventListener('click', e => {
         const navItem = e.target.closest('[data-screen]');
         if (navItem) {
@@ -84,8 +59,15 @@ export function setupApp() {
             navigateTo(navItem.getAttribute('data-screen'));
         }
 
+        // Bell icon → Messages
+        if (e.target.closest('#bell-btn')) {
+            navigateTo('message');
+        }
+
         // Logout
         if (e.target.closest('#logout-btn')) {
+            const ok = confirm('Are you sure you want to logout?');
+            if (!ok) return;
             signOut(auth).then(() => {
                 localStorage.clear();
                 sessionStorage.clear();
@@ -109,5 +91,26 @@ export function setupApp() {
     });
 }
 
-// Expose globally so map popups / other inline handlers can call it
-window.navigateTo = navigateTo;
+function _subscribeUnreadBadge(uid) {
+    if (_unreadUnsub) _unreadUnsub();
+    const q = collection(db, 'user_chats', uid, 'chats');
+    _unreadUnsub = onSnapshot(q, snap => {
+        let total = 0;
+        snap.forEach(d => { total += (d.data().unreadCount || 0); });
+        _setBellBadge(total);
+    }, () => { });
+}
+
+function _setBellBadge(count) {
+    const bell = document.getElementById('bell-badge');
+    const tab = document.getElementById('msg-tab-badge');
+    [bell, tab].forEach(el => {
+        if (!el) return;
+        if (count > 0) {
+            el.textContent = count;
+            el.style.display = 'flex';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+}

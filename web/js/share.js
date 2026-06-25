@@ -1,5 +1,7 @@
-import { ref, push, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { rtdb, auth } from "./firebase-config.js";
+import {
+    collection, addDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { db, auth } from "./firebase-config.js";
 
 export function initShare() {
     const photoBox = document.getElementById('photo-upload-box');
@@ -9,26 +11,27 @@ export function initShare() {
 
     let activeCategory = 'Cooked Meal';
     let selectedTags = [];
+    let imageDataUri = '';
 
     photoBox?.addEventListener('click', () => photoInput?.click());
     photoInput?.addEventListener('change', e => {
         const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (re) => {
-                photoPreview.src = re.target.result;
-                photoPreview.classList.remove('hidden');
-                photoBox.querySelector('.camera-icon-circle')?.classList.add('hidden');
-                photoBox.querySelector('.upload-text')?.classList.add('hidden');
-                photoBox.querySelector('.upload-hint')?.classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = re => {
+            imageDataUri = re.target.result;
+            photoPreview.src = imageDataUri;
+            photoPreview.classList.remove('hidden');
+            photoBox.querySelector('.camera-icon-circle')?.classList.add('hidden');
+            photoBox.querySelector('.upload-text')?.classList.add('hidden');
+            photoBox.querySelector('.upload-hint')?.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
     });
 
-    // Category chips
+    // Category chips — single active
     document.querySelectorAll('#category-chips-share .cat-chip').forEach(chip => {
-        chip.addEventListener('click', (e) => {
+        chip.addEventListener('click', e => {
             e.preventDefault();
             document.querySelectorAll('#category-chips-share .cat-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
@@ -36,92 +39,85 @@ export function initShare() {
         });
     });
 
-    // Dietary tag chips (toggle)
+    // Dietary tags — multi-toggle
     document.querySelectorAll('.diet-tag').forEach(tag => {
-        tag.addEventListener('click', (e) => {
+        tag.addEventListener('click', e => {
             e.preventDefault();
             tag.classList.toggle('active');
-            const tagVal = tag.getAttribute('data-tag');
-            if (selectedTags.includes(tagVal)) {
-                selectedTags = selectedTags.filter(t => t !== tagVal);
-            } else {
-                selectedTags.push(tagVal);
-            }
+            const val = tag.getAttribute('data-tag');
+            if (selectedTags.includes(val)) selectedTags = selectedTags.filter(t => t !== val);
+            else selectedTags.push(val);
         });
     });
 
-    const submitLogic = async () => {
+    btnSubmit?.addEventListener('click', async () => {
         const user = auth.currentUser;
-        if (!user) return alert('Please login first');
+        if (!user) return alert('Please login first.');
 
         const foodName = document.getElementById('share-food-name').value.trim();
         const quantity = document.getElementById('share-quantity').value.trim();
         const location = document.getElementById('share-location').value.trim();
         const description = document.getElementById('share-description')?.value.trim() || '';
         const isAnon = document.getElementById('share-anonymous')?.checked || false;
-
-        // Read hours and minutes from the inputs
         const hours = parseInt(document.getElementById('share-hours')?.value) || 0;
         const minutes = parseInt(document.getElementById('share-minutes')?.value) || 0;
-        const totalMs = (hours * 3600000) + (minutes * 60000);
+        const totalMs = hours * 3600000 + minutes * 60000;
 
-        if (!foodName || !quantity) return alert('Required fields missing');
-        if (totalMs <= 0) return alert('Please set an Available Until time');
+        if (!foodName) return alert('Please enter a food name.');
+        if (!quantity) return alert('Please enter a quantity.');
+        if (totalMs <= 0) return alert('Please set an available-until time (more than 0 minutes).');
 
         btnSubmit.disabled = true;
-        btnSubmit.textContent = '...';
+        btnSubmit.textContent = 'Sharing...';
 
         try {
-            const newItemRef = push(ref(rtdb, 'food_items'));
-            const expiry = Date.now() + totalMs;
-
-            const donorName = isAnon ? 'Anonymous' :
-                (document.getElementById('profile-display-name')?.textContent || user.displayName || 'Donor');
-
-            await set(newItemRef, {
-                id: newItemRef.key,
+            const displayName = user.displayName || user.email?.split('@')[0] || 'User';
+            await addDoc(collection(db, 'food_items'), {
                 foodName,
                 category: activeCategory,
                 quantity,
+                location: location || 'Coimbatore, TN',
                 description,
                 dietaryTags: selectedTags,
-                location: location || 'Coimbatore, TN',
-                imageUri: photoPreview.src || '',
+                imageUri: imageDataUri || '',
                 userUid: user.uid,
-                userName: donorName,
-                sharedAt: serverTimestamp(),
-                expiryTimeMillis: expiry,
+                userName: isAnon ? 'Anonymous' : displayName,
+                isAnonymous: isAnon,
+                expiryTimeMillis: Date.now() + totalMs,
                 isClaimed: false,
-                lat: 11.0168,
-                lng: 76.9558
+                claimedByUid: '',
+                createdAt: serverTimestamp()
             });
 
-            alert('🚀 Shared successfully!');
+            alert('✅ Food shared successfully!');
             window.navigateTo('home');
-
-            // Reset form
-            document.getElementById('share-food-name').value = '';
-            document.getElementById('share-quantity').value = '';
-            document.getElementById('share-location').value = '';
-            document.getElementById('share-description').value = '';
-            document.getElementById('share-hours').value = '0';
-            document.getElementById('share-minutes').value = '20';
-            document.getElementById('share-anonymous').checked = false;
-            photoPreview.classList.add('hidden');
-            photoBox.querySelector('.camera-icon-circle')?.classList.remove('hidden');
-            photoBox.querySelector('.upload-text')?.classList.remove('hidden');
-            photoBox.querySelector('.upload-hint')?.classList.remove('hidden');
-            selectedTags = [];
-            document.querySelectorAll('.diet-tag').forEach(t => t.classList.remove('active'));
-            btnSubmit.disabled = false;
-            btnSubmit.textContent = 'SHARE';
-
+            _resetShareForm();
         } catch (err) {
-            alert('Error: ' + err.message);
+            alert('Error sharing food: ' + err.message);
+        } finally {
             btnSubmit.disabled = false;
             btnSubmit.textContent = 'SHARE';
         }
-    };
+    });
 
-    btnSubmit?.addEventListener('click', submitLogic);
+    function _resetShareForm() {
+        document.getElementById('share-food-name').value = '';
+        document.getElementById('share-quantity').value = '';
+        document.getElementById('share-location').value = '';
+        document.getElementById('share-description').value = '';
+        document.getElementById('share-hours').value = '0';
+        document.getElementById('share-minutes').value = '20';
+        document.getElementById('share-anonymous').checked = false;
+        photoPreview.classList.add('hidden');
+        imageDataUri = '';
+        photoBox.querySelector('.camera-icon-circle')?.classList.remove('hidden');
+        photoBox.querySelector('.upload-text')?.classList.remove('hidden');
+        photoBox.querySelector('.upload-hint')?.classList.remove('hidden');
+        selectedTags = [];
+        document.querySelectorAll('.diet-tag').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('#category-chips-share .cat-chip').forEach((c, i) => {
+            c.classList.toggle('active', i === 0);
+        });
+        activeCategory = 'Cooked Meal';
+    }
 }

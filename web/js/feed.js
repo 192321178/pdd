@@ -1,48 +1,35 @@
-import { ref, onValue, update, set, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { rtdb, auth } from "./firebase-config.js";
+import {
+    collection, onSnapshot, query, orderBy, doc,
+    runTransaction, serverTimestamp, addDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { ref as rtdbRef, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { db, rtdb, auth } from "./firebase-config.js";
+
+let allItems = [];
+let activeFilter = 'all';
+let searchQuery = '';
+let feedUnsub = null;
+let detailTimer = null;
+let detailUnsub = null;
 
 export function initFeed() {
     const feedGrid = document.getElementById('feed-grid');
     const searchInput = document.getElementById('search-input');
     const filterChips = document.getElementById('filter-chips');
 
-    let allItems = [];
-    let activeFilter = 'all';
-    let searchQuery = '';
-
-    onValue(ref(rtdb, 'food_items'), (snapshot) => {
-        allItems = [];
+    // Subscribe to Firestore food_items with real-time onSnapshot
+    const q = query(collection(db, 'food_items'), orderBy('createdAt', 'desc'));
+    feedUnsub = onSnapshot(q, snapshot => {
         const now = Date.now();
-        if (snapshot.exists()) {
-            snapshot.forEach(child => {
-                const item = { id: child.key, ...child.val() };
-                if (item.expiryTimeMillis && now > item.expiryTimeMillis) return;
-                allItems.push(item);
-            });
-            allItems.sort((a, b) => (b.sharedAt || 0) - (a.sharedAt || 0));
-        }
-        renderFeed();
-    });
-
-    function renderFeed() {
-        let filtered = allItems;
-        if (activeFilter !== 'all') filtered = filtered.filter(i => i.category === activeFilter);
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            filtered = filtered.filter(i => (i.foodName + i.description).toLowerCase().includes(q));
-        }
-
-        feedGrid.innerHTML = '';
-        if (!filtered.length) {
-            feedGrid.innerHTML = `<div class="empty-state">No listings found near you.</div>`;
-            return;
-        }
-
-        filtered.forEach(item => {
-            const card = createFoodCard(item);
-            feedGrid.appendChild(card);
+        allItems = [];
+        snapshot.forEach(d => {
+            const item = { id: d.id, ...d.data() };
+            // Skip expired items
+            if (item.expiryTimeMillis && now > item.expiryTimeMillis) return;
+            allItems.push(item);
         });
-    }
+        renderFeed();
+    }, err => console.error('Feed snapshot error:', err));
 
     searchInput?.addEventListener('input', e => { searchQuery = e.target.value; renderFeed(); });
     filterChips?.addEventListener('click', e => {
@@ -53,6 +40,26 @@ export function initFeed() {
         activeFilter = btn.getAttribute('data-cat');
         renderFeed();
     });
+
+    function renderFeed() {
+        let filtered = allItems;
+        if (activeFilter !== 'all') filtered = filtered.filter(i => i.category === activeFilter);
+        if (searchQuery) {
+            const q2 = searchQuery.toLowerCase();
+            filtered = filtered.filter(i => (i.foodName + ' ' + (i.description || '')).toLowerCase().includes(q2));
+        }
+
+        // Update listing count
+        const countEl = document.getElementById('listing-count');
+        if (countEl) countEl.textContent = `${filtered.length} listing${filtered.length !== 1 ? 's' : ''}`;
+
+        feedGrid.innerHTML = '';
+        if (!filtered.length) {
+            feedGrid.innerHTML = `<div class="empty-state"><i class="fas fa-leaf" style="font-size:48px;color:var(--primary);opacity:0.4;margin-bottom:16px;"></i><p>No food listings near you right now.</p></div>`;
+            return;
+        }
+        filtered.forEach(item => feedGrid.appendChild(createFoodCard(item)));
+    }
 }
 
 function createFoodCard(item) {
@@ -62,107 +69,132 @@ function createFoodCard(item) {
     const timeLeft = (item.expiryTimeMillis || 0) - Date.now();
     const hrs = Math.floor(timeLeft / 3600000);
     const mins = Math.floor((timeLeft % 3600000) / 60000);
-    const timeText = timeLeft > 0 ? `${hrs}h ${mins}m left` : 'Expired';
+    const timeText = timeLeft > 0
+        ? hrs > 0 ? `${hrs}h ${mins}m left` : `${mins}m left`
+        : 'Expired';
 
-    // Parity: Determine "Fresh!" status (e.g. shared in last 2 hours)
-    const isFresh = (Date.now() - (item.sharedAt || 0)) < 7200000;
+    const isFresh = item.createdAt && (Date.now() - (item.createdAt.toMillis?.() || item.createdAt)) < 7200000;
+    const donorName = item.isAnonymous ? 'Anonymous' : (item.userName || 'User');
+    const initial = donorName.charAt(0).toUpperCase();
 
     div.innerHTML = `
         <div class="card-image-wrap">
-            ${item.imageUri ? `<img src="${item.imageUri}">` : `<div class="img-placeholder">🍱</div>`}
+            ${item.imageUri ? `<img src="${item.imageUri}" alt="${item.foodName}">` : `<div class="img-placeholder">🍱</div>`}
             ${isFresh ? `<div class="fresh-tag">Fresh!</div>` : ''}
-            <div style="position:absolute; bottom:12px; left:12px; background:rgba(0,0,0,0.6); color:#fff; padding:4px 8px; border-radius:4px; font-size:11px; font-weight:700;">
-                ${item.category || 'Cooked Meal'}
-            </div>
+            <div class="card-cat-badge">${item.category || 'Cooked Meal'}</div>
+            ${item.isClaimed ? `<div class="claimed-banner"><span>Claimed ✓</span></div>` : ''}
         </div>
         <div class="card-body">
-            <div class="card-row-top">
-                <span style="color:var(--text-hint); font-size:11px;">← SKIP</span>
-                <span style="color:var(--primary); font-size:11px;">CLAIM →</span>
-            </div>
             <h3 class="card-title">${item.foodName}</h3>
             <p class="card-text-secondary">${item.quantity || '1 portion'}</p>
-            <p style="color:var(--error); font-size:12px; font-weight:700; margin-bottom:4px;">${timeText}</p>
-            <p class="card-text-secondary" style="font-size:12px;">${item.description || 'Tasty'}</p>
+            <p class="card-time-left ${timeLeft < 600000 ? 'urgent' : ''}">${timeText}</p>
+            <p class="card-text-secondary" style="font-size:12px;">${item.description || ''}</p>
             <div class="card-footer">
                 <div class="user-pill">
-                    <div class="avatar-small">${item.userName?.charAt(0).toUpperCase() || 'U'}</div>
-                    <span>${item.userName || 'Anonymous'}</span>
+                    <div class="avatar-small">${initial}</div>
+                    <span>${donorName}</span>
                 </div>
-                <div style="font-weight:900; font-size:13px;"><i class="fas fa-star" style="color:#FFC107"></i> 5.0</div>
+                <div class="star-rating"><i class="fas fa-star" style="color:#FFC107"></i> 5.0</div>
             </div>
         </div>
     `;
 
-    div.onclick = () => openFoodDetail(item);
+    div.onclick = () => openFoodDetail(item.id);
     return div;
 }
 
-let detailTimer = null;
+export function openFoodDetail(itemId) {
+    // Unsubscribe from previous detail listener
+    if (detailUnsub) { detailUnsub(); detailUnsub = null; }
+    if (detailTimer) { clearInterval(detailTimer); detailTimer = null; }
 
-export function openFoodDetail(item) {
     const screen = document.getElementById('food-detail-screen');
+    screen.innerHTML = `<div style="padding:60px;text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--primary);"></i></div>`;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    screen.classList.add('active');
 
-    function updateTimer() {
-        const timeLeft = (item.expiryTimeMillis || 0) - Date.now();
-        const timeEl = document.getElementById('detail-timer-val');
-        if (!timeEl) return;
-
-        if (timeLeft <= 0) {
-            timeEl.textContent = "EXPIRED";
-            timeEl.style.color = "#ff4444";
+    // Real-time listener on this specific food doc
+    detailUnsub = onSnapshot(doc(db, 'food_items', itemId), docSnap => {
+        if (!docSnap.exists()) {
+            screen.innerHTML = `<p style="padding:40px;">Food item not found.</p>`;
             return;
         }
+        const item = { id: docSnap.id, ...docSnap.data() };
+        _renderDetail(item, screen);
+    }, err => console.error('Detail snapshot error:', err));
+}
+window.openFoodDetail = openFoodDetail;
 
-        const hrs = Math.floor(timeLeft / 3600000);
-        const mins = Math.floor((timeLeft % 3600000) / 60000);
-        const secs = Math.floor((timeLeft % 60000) / 1000);
-        timeEl.textContent = `${hrs.toString().padStart(2, '0')} : ${mins.toString().padStart(2, '0')} : ${secs.toString().padStart(2, '0')}`;
+function _renderDetail(item, screen) {
+    if (detailTimer) clearInterval(detailTimer);
+
+    const donorName = item.isAnonymous ? 'Anonymous' : (item.userName || 'User');
+    const donorInitial = donorName.charAt(0).toUpperCase();
+    const tags = item.dietaryTags || [];
+    const tagsHtml = tags.length ? tags.map(t => `<span class="diet-chip">${t}</span>`).join('') : '';
+    const currentUser = auth.currentUser;
+    const donorUid = item.userUid;
+
+    // Determine button state
+    let claimBtnHtml = '';
+    let msgBtnHtml = '';
+    const isMyFood = currentUser && donorUid === currentUser.uid;
+    const alreadyClaimedByMe = currentUser && item.claimedByUid === currentUser.uid;
+    const claimedBySomeoneElse = item.isClaimed && !alreadyClaimedByMe;
+
+    if (!isMyFood) {
+        if (item.isClaimed) {
+            if (alreadyClaimedByMe) {
+                claimBtnHtml = `<button class="btn-web-claim" disabled style="opacity:0.6;cursor:default;">Already claimed by you ✓</button>`;
+                msgBtnHtml = `<button class="btn-web-msg" id="btn-msg-donor"><i class="fas fa-comment-alt"></i> MESSAGE DONOR</button>`;
+            } else {
+                claimBtnHtml = `<button class="btn-web-claim" disabled style="opacity:0.5;cursor:default;background:#aaa;">Already Claimed</button>`;
+            }
+        } else {
+            claimBtnHtml = `<button class="btn-web-claim" id="btn-claim-final">CLAIM FOOD</button>`;
+            msgBtnHtml = `<button class="btn-web-msg" id="btn-msg-donor"><i class="fas fa-comment-alt"></i> MESSAGE DONOR</button>`;
+        }
     }
 
-    if (detailTimer) clearInterval(detailTimer);
-    detailTimer = setInterval(updateTimer, 1000);
-
-    const donorInitial = (item.donorName || 'U').charAt(0).toUpperCase();
-    const tags = item.dietaryTags || ['halal'];
-    const tagsHtml = tags.map(t => `<span>${t}</span>`).join('');
-
     screen.innerHTML = `
-        <div class="detail-web-layout">
-            <div class="detail-web-image">
-                ${item.imageUri ? `<img src="${item.imageUri}" alt="${item.foodName}">` : `<div class="img-placeholder-lg">🍲</div>`}
+        <div class="detail-android-layout">
+            <div class="detail-image-box">
+                ${item.imageUri
+            ? `<img src="${item.imageUri}" alt="${item.foodName}" style="width:100%;height:100%;object-fit:cover;">`
+            : `<div class="img-placeholder-lg">🍲</div>`}
+                <button onclick="window.navigateTo('home')" class="btn-back-detail">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
             </div>
-            <div class="detail-web-info">
-                <button onclick="window.navigateTo('home')" class="btn-back-web"><i class="fas fa-arrow-left"></i> Back to Feed</button>
-
-                <h2>${item.foodName}</h2>
-                <div class="detail-meta">
-                    <span class="cat-chip active">${item.category}</span>
+            <div class="detail-content-scroll">
+                <div class="detail-title-row">
+                    <h2 class="detail-food-name">${item.foodName}</h2>
                     <div class="countdown-box">
                         <i class="fas fa-clock"></i>
-                        <span id="detail-timer-val">00 : 00 : 00</span>
+                        <span id="detail-timer-val">--:--:--</span>
                     </div>
                 </div>
 
-                <div class="info-cards-row">
-                    <div class="info-card-web">
-                        <i class="fas fa-egg"></i>
-                        <span class="label">Quantity</span>
-                        <span class="value">${item.quantity}</span>
+                <div style="margin-bottom:16px;">
+                    <span class="cat-chip-detail">${item.category || 'Cooked Meal'}</span>
+                </div>
+
+                <div class="detail-info-rows">
+                    <div class="info-row">
+                        <i class="fas fa-utensils"></i>
+                        <span><strong>Quantity:</strong> ${item.quantity || 'N/A'}</span>
                     </div>
-                    <div class="info-card-web">
+                    <div class="info-row">
                         <i class="fas fa-map-marker-alt"></i>
-                        <span class="label">Location</span>
-                        <span class="value">${item.location || 'Poonamallee'}</span>
+                        <span><strong>Location:</strong> ${item.location || 'Not specified'}</span>
                     </div>
-                    <div class="info-card-web">
-                        <i class="fas fa-truck"></i>
-                        <span class="label">Pickup</span>
-                        <span class="value">Now</span>
+                    <div class="info-row">
+                        <i class="fas fa-clock"></i>
+                        <span><strong>Pickup:</strong> Available now</span>
                     </div>
                 </div>
 
-                <div class="dietary-chips">${tagsHtml}</div>
+                ${tagsHtml ? `<div class="dietary-chips-row">${tagsHtml}</div>` : ''}
 
                 <div class="about-section">
                     <h3>About this listing</h3>
@@ -171,141 +203,132 @@ export function openFoodDetail(item) {
 
                 <div class="about-section">
                     <h3>Donor</h3>
-                    <div class="donor-card-web">
-                        <div class="donor-avatar-web">${donorInitial}</div>
+                    <div class="donor-card">
+                        <div class="donor-avatar">${donorInitial}</div>
                         <div>
-                            <strong>${item.donorName || 'User'}</strong>
-                            <p style="font-size:13px; color:var(--text-hint);">⭐ Community contributor</p>
+                            <strong>${donorName}</strong>
+                            <p style="font-size:13px;color:var(--text-hint);margin:2px 0 0;">⭐ Community contributor</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="detail-web-actions">
-                    <button id="btn-claim-final" class="btn-web-claim">CLAIM FOOD</button>
-                    <button id="btn-msg-donor" class="btn-web-msg"><i class="far fa-comment-alt"></i> MESSAGE DONOR</button>
+                <div class="detail-actions">
+                    ${claimBtnHtml}
+                    ${msgBtnHtml}
                 </div>
             </div>
         </div>
     `;
 
-    // Initialize timer immediately
+    // Live countdown
+    function updateTimer() {
+        const timeLeft = (item.expiryTimeMillis || 0) - Date.now();
+        const el = document.getElementById('detail-timer-val');
+        if (!el) return;
+        if (timeLeft <= 0) { el.textContent = 'EXPIRED'; el.style.color = '#ff4444'; return; }
+        const h = Math.floor(timeLeft / 3600000);
+        const m = Math.floor((timeLeft % 3600000) / 60000);
+        const s = Math.floor((timeLeft % 60000) / 1000);
+        el.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
     updateTimer();
+    detailTimer = setInterval(updateTimer, 1000);
 
-    // Show screen
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    screen.classList.add('active');
+    // CLAIM BUTTON
+    document.getElementById('btn-claim-final')?.addEventListener('click', () => _claimFood(item));
 
-    const donorUid = item.userUid || item.userUID;
-    const msgBtn = document.getElementById('btn-msg-donor');
-    const claimBtnFinal = document.getElementById('btn-claim-final');
-
-    // Check if food belongs to current user
-    if (currentUser && donorUid === currentUser.uid) {
-        if (claimBtnFinal) {
-            claimBtnFinal.disabled = true;
-            claimBtnFinal.style.opacity = '0.5';
-            claimBtnFinal.textContent = "YOUR DONATION";
-        }
-        if (msgBtn) msgBtn.style.display = 'none'; // Cannot message self
-    } else if (item.isClaimed) {
-        if (claimBtnFinal) {
-            claimBtnFinal.disabled = true;
-            claimBtnFinal.style.opacity = '0.5';
-            claimBtnFinal.textContent = 'ALREADY CLAIMED';
-        }
-
-        // 🚀 ONLY the person who claimed it can message the donor
-        const claimerUid = item.claimedByUid || item.claimedBy;
-        if (currentUser && currentUser.uid === claimerUid) {
-            if (msgBtn) msgBtn.style.display = 'inline-flex';
-        } else {
-            if (msgBtn) msgBtn.style.display = 'none';
-        }
-    } else {
-        if (claimBtnFinal) {
-            claimBtnFinal.onclick = async () => {
-                if (!currentUser) return window.navigateTo('profile');
-
-                const confirmClaim = confirm(`Claim ${item.foodName}? A message will be sent to the donor.`);
-                if (!confirmClaim) return;
-
-                try {
-                    // 1. Mark as claimed in RTDB (using 'id' for parity)
-                    const foodRef = ref(rtdb, `food_items/${item.id}`);
-                    await update(foodRef, {
-                        isClaimed: true,
-                        claimedBy: currentUser.uid,
-                        claimedByUid: currentUser.uid,
-                        claimedAt: Date.now()
-                    });
-
-                    // 🚀 STATS are dynamic now, no manual increment needed for claims!
-                    // Calculated in profile.js by counting items where claimedByUid === user.uid
-
-                    // 2. Send auto-message to donor
-                    if (donorUid) {
-                        const chatId = currentUser.uid < donorUid ? `${currentUser.uid}_${donorUid}` : `${donorUid}_${currentUser.uid}`;
-                        const msgRef = push(ref(rtdb, `chats/${chatId}`)); // 🚀 Align with mobile "chats/" path
-
-                        const claimMsg = `Hi, I claimed your food - ${item.foodName} -. Thank you!`;
-
-                        await set(msgRef, {
-                            messageId: msgRef.key,
-                            senderId: currentUser.uid,
-                            senderName: currentUser.displayName || currentUser.email?.split('@')[0] || "User",
-                            message: claimMsg, // 🚀 Align with mobile field name "message"
-                            timestamp: Date.now()
-                        });
-
-                        // 🚀 Alignment with com.sharebite.fragments.ChatPreview
-                        const metaForDonor = {
-                            chatId: chatId,
-                            otherUserId: currentUser.uid,
-                            otherUserName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Receiver',
-                            lastMessage: claimMsg,
-                            timestamp: Date.now(),
-                            foodName: item.foodName
-                        };
-                        const metaForMe = {
-                            chatId: chatId,
-                            otherUserId: donorUid,
-                            otherUserName: item.userName || item.donorName || 'Donor',
-                            lastMessage: claimMsg,
-                            timestamp: Date.now(),
-                            foodName: item.foodName
-                        };
-
-                        await set(ref(rtdb, `user_chats/${donorUid}/${chatId}`), metaForDonor);
-                        await set(ref(rtdb, `user_chats/${currentUser.uid}/${chatId}`), metaForMe);
-                    }
-
-                } catch (err) {
-                    console.error(err);
-                    alert('Error claiming food.');
-                }
-
-                alert('🎉 Food claimed successfully!');
-                window.navigateTo('home');
-            };
-        }
-    }
-
-    if (msgBtn) {
-        msgBtn.onclick = () => {
-            if (!auth.currentUser) return window.navigateTo('profile');
-            const donorId = item.userUid || item.userUID;
-            const chatId = auth.currentUser.uid < donorId ? `${auth.currentUser.uid}_${donorId}` : `${donorId}_${auth.currentUser.uid}`;
-
-            // 🚀 Universal logic for ALL donors and ALL food items
-            window.activeClaimChat = {
-                chatId: chatId,
-                donorId: donorId,
-                donorName: item.userName || item.donorName || 'Donor',
-                foodName: item.foodName,
-                isAutoOpen: true // 🚀 Triggers the 'Doctor' repair in chat.js
-            };
-
-            window.navigateTo('message');
+    // MESSAGE DONOR BUTTON
+    document.getElementById('btn-msg-donor')?.addEventListener('click', () => {
+        if (!auth.currentUser) return window.navigateTo('profile');
+        const chatId = auth.currentUser.uid < donorUid
+            ? `${auth.currentUser.uid}_${donorUid}`
+            : `${donorUid}_${auth.currentUser.uid}`;
+        window.activeClaimChat = {
+            chatId,
+            donorId: donorUid,
+            donorName: donorName,
+            foodName: item.foodName,
+            isAutoOpen: true
         };
+        window.navigateTo('message');
+    });
+}
+
+async function _claimFood(item) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return window.navigateTo('profile');
+
+    const ok = confirm(`Claim "${item.foodName}"? A system message will be sent to the donor with your OTP.`);
+    if (!ok) return;
+
+    const foodRef = doc(db, 'food_items', item.id);
+    try {
+        await runTransaction(db, async (transaction) => {
+            const snap = await transaction.get(foodRef);
+            if (!snap.exists()) throw new Error('Food item no longer exists.');
+            if (snap.data().isClaimed) throw new Error('This food was just claimed by someone else!');
+            transaction.update(foodRef, {
+                isClaimed: true,
+                claimedByUid: currentUser.uid,
+                claimedAt: serverTimestamp()
+            });
+        });
+    } catch (err) {
+        alert('❌ ' + err.message);
+        return;
     }
+
+    // Generate OTP
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    const claimerName = currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
+    const donorUid = item.userUid;
+    const chatId = currentUser.uid < donorUid
+        ? `${currentUser.uid}_${donorUid}`
+        : `${donorUid}_${currentUser.uid}`;
+
+    const now = Date.now();
+    const timeStr = new Date(now).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const systemMsg = `[ShareBite System] ✅ Claim Confirmed\nFood: ${item.foodName}\nClaimed by: ${claimerName}\nClaim OTP: ${otp}\nTime: ${timeStr}`;
+
+    // Send system message to RTDB chats
+    try {
+        const msgRef = push(rtdbRef(rtdb, `chats/${chatId}`));
+        await set(msgRef, {
+            messageId: msgRef.key,
+            senderId: 'system',
+            senderName: 'ShareBite System',
+            message: systemMsg,
+            timestamp: now,
+            isSystem: true
+        });
+
+        // Update user_chats previews in Firestore
+        const { setDoc: fsSetDoc, doc: fsDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+        const donorName2 = item.isAnonymous ? 'Anonymous' : (item.userName || 'Donor');
+        await fsSetDoc(fsDoc(db, 'user_chats', donorUid, 'chats', chatId), {
+            chatId,
+            otherUserId: currentUser.uid,
+            otherUserName: claimerName,
+            foodName: item.foodName,
+            lastMessage: systemMsg,
+            timestamp: now,
+            unreadCount: 1,
+            lastReadTimestamp: 0
+        }, { merge: true });
+        await fsSetDoc(fsDoc(db, 'user_chats', currentUser.uid, 'chats', chatId), {
+            chatId,
+            otherUserId: donorUid,
+            otherUserName: donorName2,
+            foodName: item.foodName,
+            lastMessage: systemMsg,
+            timestamp: now,
+            unreadCount: 0,
+            lastReadTimestamp: now
+        }, { merge: true });
+    } catch (err) {
+        console.error('Error sending claim system message:', err);
+    }
+
+    alert(`🎉 Food claimed! Your OTP is: ${otp}\nShow this to the donor to verify your claim.`);
+    window.navigateTo('home');
 }

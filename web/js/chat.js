@@ -1,11 +1,17 @@
-import { ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { rtdb, auth } from "./firebase-config.js";
+import {
+    collection, query, onSnapshot, doc, updateDoc,
+    setDoc, orderBy
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { ref as rtdbRef, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { db, rtdb, auth } from "./firebase-config.js";
 
 let currentChatId = null;
+let currentChatMeta = null;
 let messagesUnsub = null;
+let chatListUnsub = null;
 
 export function initChat() {
-    // Handled via dynamic rendering in Chat detail
+    // Handled via loadChatList called from app.js navigation
 }
 
 export function loadChatList() {
@@ -14,71 +20,94 @@ export function loadChatList() {
     const chatDetail = document.getElementById('chat-detail-view');
     if (!user || !chatList || !chatDetail) return;
 
-    // 🚀 Ensure we start fresh
-    if (window.chatListUnsub) window.chatListUnsub();
-
+    if (chatListUnsub) chatListUnsub();
     chatList.classList.remove('hidden');
     chatDetail.classList.add('hidden');
 
-    window.chatListUnsub = onValue(ref(rtdb, `user_chats/${user.uid}`), snapshot => {
+    // Handle auto-open from food detail "Message Donor"
+    const autoOpen = window.activeClaimChat;
+    if (autoOpen?.isAutoOpen) {
+        delete window.activeClaimChat;
+        _ensureChatMeta(user, autoOpen).then(() => {
+            openChatDetail(autoOpen);
+        });
+        return;
+    }
+
+    // Real-time Firestore user_chats listener
+    const q = query(
+        collection(db, 'user_chats', user.uid, 'chats'),
+        orderBy('timestamp', 'desc')
+    );
+    chatListUnsub = onSnapshot(q, snap => {
         chatList.innerHTML = '';
-        if (!snapshot.exists()) {
+        if (snap.empty) {
             chatList.innerHTML = `
-                <div style="grid-column:1/-1; text-align:center; padding:100px; color:var(--text-hint);">
-                    <i class="fa fa-comments" style="font-size:64px; margin-bottom:16px;"></i>
+                <div class="empty-inbox">
+                    <i class="fa fa-comments"></i>
                     <h3>Your Inbox is Empty</h3>
                     <p>When you start or receive a food claim, messages will appear here.</p>
                 </div>`;
             return;
         }
-
-        const previews = [];
-        snapshot.forEach(child => previews.push({ id: child.key, ...child.val() }));
-        previews.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-        previews.forEach(chat => {
-            const card = document.createElement('div');
-            card.className = 'stat-card';
-            card.style.cursor = 'pointer';
-            card.style.display = 'flex';
-            card.style.alignItems = 'center';
-            card.style.gap = '20px';
-
-            const initial = chat.otherUserName?.charAt(0).toUpperCase() || 'U';
-
-            card.innerHTML = `
-                <div style="width:60px; height:60px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; flex-shrink:0;">${initial}</div>
-                <div style="flex:1; overflow:hidden;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <h4 style="font-size:18px;">${chat.otherUserName}</h4>
-                        <span style="font-size:12px; color:var(--text-hint);">${formatTime(chat.timestamp)}</span>
-                    </div>
-                    <p style="font-size:13px; color:var(--primary); font-weight:700; margin-bottom:4px;">Regarding: ${chat.foodName}</p>
-                    <p style="font-size:14px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${chat.lastMessage || 'Start a conversation'}</p>
-                </div>
-            `;
-
-            card.onclick = () => openChatDetail(chat);
-            chatList.appendChild(card);
+        snap.forEach(d => {
+            const chat = { id: d.id, ...d.data() };
+            chatList.appendChild(_createChatRow(chat));
         });
-    });
+    }, err => console.error('Chat list snapshot error:', err));
+}
+
+function _createChatRow(chat) {
+    const card = document.createElement('div');
+    card.className = 'chat-row';
+
+    const initial = chat.otherUserName?.charAt(0).toUpperCase() || 'U';
+    const unread = chat.unreadCount || 0;
+    const timeStr = _formatTime(chat.timestamp);
+
+    card.innerHTML = `
+        <div class="chat-avatar">${initial}</div>
+        <div class="chat-row-info">
+            <div class="chat-row-top">
+                <span class="chat-name">${chat.otherUserName || 'User'}</span>
+                <span class="chat-time">${timeStr}</span>
+            </div>
+            <div class="chat-row-regarding">Regarding: ${chat.foodName || ''}</div>
+            <div class="chat-row-bottom">
+                <span class="chat-preview">${chat.lastMessage ? _truncate(chat.lastMessage, 45) : 'Start a conversation'}</span>
+                ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}
+            </div>
+        </div>
+    `;
+    card.onclick = () => openChatDetail(chat);
+    return card;
 }
 
 function openChatDetail(chat) {
-    if (!chat.chatId) return;
+    const user = auth.currentUser;
+    if (!chat.chatId || !user) return;
 
     const chatList = document.getElementById('chat-list');
     const chatDetail = document.getElementById('chat-detail-view');
     if (chatList) chatList.classList.add('hidden');
     if (chatDetail) chatDetail.classList.remove('hidden');
 
-    // UI Update - Show Chat Header
-    const chatTitle = document.querySelector('.chat-title-info h3');
-    const chatSub = document.querySelector('.chat-title-info p');
-    if (chatTitle) chatTitle.textContent = chat.otherUserName;
-    if (chatSub) chatSub.textContent = `Regarding: ${chat.foodName}`;
-
     currentChatId = chat.chatId;
+    currentChatMeta = chat;
+
+    // Update header
+    const nameEl = document.querySelector('.chat-title-info h3');
+    const subEl = document.querySelector('.chat-title-info p');
+    if (nameEl) nameEl.textContent = chat.otherUserName || 'User';
+    if (subEl) subEl.textContent = `Regarding: ${chat.foodName || ''}`;
+
+    // Mark as read — reset unreadCount + lastReadTimestamp in Firestore
+    const chatDocRef = doc(db, 'user_chats', user.uid, 'chats', chat.chatId);
+    updateDoc(chatDocRef, {
+        unreadCount: 0,
+        lastReadTimestamp: Date.now()
+    }).catch(() => { });
+
     loadMessages(chat.chatId);
 }
 
@@ -87,54 +116,53 @@ window.backToInbox = () => {
     const chatDetail = document.getElementById('chat-detail-view');
     if (chatList) chatList.classList.remove('hidden');
     if (chatDetail) chatDetail.classList.add('hidden');
-
     currentChatId = null;
-    if (messagesUnsub) {
-        messagesUnsub();
-        messagesUnsub = null;
-    }
-
-    // 🚀 CRITICAL: Re-run loadChatList to ensure the inbox is fresh!
+    currentChatMeta = null;
+    if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
     loadChatList();
 };
 
 function loadMessages(chatId) {
-    const messagesContainer = document.getElementById('chat-messages');
-    if (!messagesContainer) return;
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    if (messagesUnsub) messagesUnsub();
 
-    if (messagesUnsub) messagesUnsub(); // Clean up old listener
-
-    messagesUnsub = onValue(ref(rtdb, `chats/${chatId}`), snapshot => {
-        messagesContainer.innerHTML = '';
+    messagesUnsub = onValue(rtdbRef(rtdb, `chats/${chatId}`), snapshot => {
+        container.innerHTML = '';
         if (!snapshot.exists()) return;
 
-        snapshot.forEach(child => {
-            const msg = child.val();
-            const div = document.createElement('div');
-            const isMe = msg.senderId === auth.currentUser.uid;
+        const msgs = [];
+        snapshot.forEach(child => msgs.push({ key: child.key, ...child.val() }));
+        msgs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
-            // Layout logic for bubbles
-            div.style.alignSelf = isMe ? 'flex-end' : 'flex-start';
-            div.style.background = isMe ? 'var(--primary)' : '#fff';
-            div.style.color = isMe ? '#fff' : '#000';
-            div.style.padding = '10px 16px';
-            div.style.borderRadius = '16px';
-            div.style.maxWidth = '70%';
-            div.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-            div.style.fontSize = '14px';
-            div.style.position = 'relative';
+        let lastDateStr = '';
+        msgs.forEach(msg => {
+            const dateStr = _getDateLabel(msg.timestamp);
+            if (dateStr !== lastDateStr) {
+                lastDateStr = dateStr;
+                const sep = document.createElement('div');
+                sep.className = 'date-separator';
+                sep.innerHTML = `<span>${dateStr}</span>`;
+                container.appendChild(sep);
+            }
 
-            div.innerHTML = `
-                <div>${msg.message}</div>
-                <div style="font-size: 10px; opacity: 0.7; margin-top: 4px; text-align: right;">${formatTime(msg.timestamp)}</div>
+            const isMe = msg.senderId === auth.currentUser?.uid;
+            const isSystem = msg.isSystem || msg.senderId === 'system';
+
+            const bubble = document.createElement('div');
+            bubble.className = isSystem ? 'msg-bubble system-msg' : (isMe ? 'msg-bubble sent' : 'msg-bubble received');
+
+            const lines = msg.message ? msg.message.replace(/\n/g, '<br>') : '';
+            bubble.innerHTML = `
+                <div class="msg-text">${lines}</div>
+                <div class="msg-time">${_formatTime(msg.timestamp)}</div>
             `;
-            messagesContainer.appendChild(div);
+            container.appendChild(bubble);
         });
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        container.scrollTop = container.scrollHeight;
     });
 }
 
-// Global Send Message Function
 window.sendMessage = async () => {
     const input = document.getElementById('chat-input-field');
     const user = auth.currentUser;
@@ -142,56 +170,79 @@ window.sendMessage = async () => {
 
     const text = input.value.trim();
     const now = Date.now();
-    const msgRef = push(ref(rtdb, `chats/${currentChatId}`));
+    input.value = '';
 
-    try {
-        await set(msgRef, {
-            messageId: msgRef.key,
-            senderId: user.uid,
-            senderName: user.displayName || user.email?.split('@')[0] || "User",
-            message: text,
-            timestamp: now
-        });
-        input.value = '';
-    } catch (err) {
-        console.error(err);
-        window.showToast?.("Failed to send message", "error");
+    const msgRef = push(rtdbRef(rtdb, `chats/${currentChatId}`));
+    await set(msgRef, {
+        messageId: msgRef.key,
+        senderId: user.uid,
+        senderName: user.displayName || user.email?.split('@')[0] || 'User',
+        message: text,
+        timestamp: now
+    });
+
+    // Update Firestore user_chats preview for both sides
+    if (currentChatMeta) {
+        const myRef = doc(db, 'user_chats', user.uid, 'chats', currentChatId);
+        await updateDoc(myRef, { lastMessage: text, timestamp: now }).catch(() => { });
+
+        const otherId = currentChatMeta.otherUserId;
+        if (otherId) {
+            const otherRef = doc(db, 'user_chats', otherId, 'chats', currentChatId);
+            await setDoc(otherRef, {
+                chatId: currentChatId,
+                otherUserId: user.uid,
+                otherUserName: user.displayName || user.email?.split('@')[0] || 'User',
+                foodName: currentChatMeta.foodName || '',
+                lastMessage: text,
+                timestamp: now,
+                unreadCount: 1,
+                lastReadTimestamp: 0
+            }, { merge: true });
+        }
     }
 };
 
-function formatTime(ts) {
-    if (!ts) return '';
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-// 🚀 Check if we were redirected from a food item and need to auto-open/repair metadata
-document.addEventListener('click', e => {
-    const navItem = e.target.closest('.nav-item');
-    if (navItem && navItem.getAttribute('data-screen') === 'message') {
-        const autoOpen = window.activeClaimChat;
-        if (autoOpen && autoOpen.isAutoOpen) {
-            // Repair metadata if missing from inbox
-            const user = auth.currentUser;
-            if (user) {
-                const metaRef = ref(rtdb, `user_chats/${user.uid}/${autoOpen.chatId}`);
-                set(metaRef, {
-                    chatId: autoOpen.chatId,
-                    otherUserId: autoOpen.donorId,
-                    otherUserName: autoOpen.donorName,
-                    foodName: autoOpen.foodName,
-                    lastMessage: "Hi, I'm interested in this!",
-                    timestamp: Date.now()
-                });
-            }
-            openChatDetail(autoOpen);
-            delete window.activeClaimChat; // Clear after use
-        } else {
-            loadChatList();
-        }
+// Enter key sends message
+document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.activeElement?.id === 'chat-input-field') {
+        window.sendMessage();
     }
 });
 
-// Internal helper for global accessibility
+async function _ensureChatMeta(user, chatInfo) {
+    const chatDocRef = doc(db, 'user_chats', user.uid, 'chats', chatInfo.chatId);
+    await setDoc(chatDocRef, {
+        chatId: chatInfo.chatId,
+        otherUserId: chatInfo.donorId,
+        otherUserName: chatInfo.donorName,
+        foodName: chatInfo.foodName,
+        lastMessage: '',
+        timestamp: Date.now(),
+        unreadCount: 0,
+        lastReadTimestamp: Date.now()
+    }, { merge: true });
+}
+
+function _formatTime(ts) {
+    if (!ts) return '';
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function _getDateLabel(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return 'Today';
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function _truncate(str, n) {
+    return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
 window.loadChatList = loadChatList;
 window.openChatDetail = openChatDetail;
