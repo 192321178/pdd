@@ -1,9 +1,5 @@
-import {
-    collection, query, onSnapshot, doc, updateDoc,
-    setDoc, orderBy
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { ref as rtdbRef, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { db, rtdb, auth } from "./firebase-config.js";
+import { ref, onValue, off, push, set, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { auth, rtdb } from "./firebase-config.js";
 
 let currentChatId = null;
 let currentChatMeta = null;
@@ -11,7 +7,7 @@ let messagesUnsub = null;
 let chatListUnsub = null;
 
 export function initChat() {
-    // Handled via loadChatList called from app.js navigation
+    // Handled via loadChatList from app.js navigation
 }
 
 export function loadChatList() {
@@ -20,28 +16,23 @@ export function loadChatList() {
     const chatDetail = document.getElementById('chat-detail-view');
     if (!user || !chatList || !chatDetail) return;
 
-    if (chatListUnsub) chatListUnsub();
+    if (chatListUnsub) off(ref(rtdb, `user_chats/${user.uid}`), 'value', chatListUnsub);
     chatList.classList.remove('hidden');
     chatDetail.classList.add('hidden');
 
-    // Handle auto-open from food detail "Message Donor"
+    // Handle auto-open (Message Donor)
     const autoOpen = window.activeClaimChat;
     if (autoOpen?.isAutoOpen) {
         delete window.activeClaimChat;
-        _ensureChatMeta(user, autoOpen).then(() => {
-            openChatDetail(autoOpen);
-        });
+        openChatDetail(autoOpen);
         return;
     }
 
-    // Real-time Firestore user_chats listener
-    const q = query(
-        collection(db, 'user_chats', user.uid, 'chats'),
-        orderBy('timestamp', 'desc')
-    );
-    chatListUnsub = onSnapshot(q, snap => {
+    // Real-time RTDB user_chats listener — Matching MessagesFragment.kt
+    const userChatsRef = ref(rtdb, `user_chats/${user.uid}`);
+    chatListUnsub = onValue(userChatsRef, snapshot => {
         chatList.innerHTML = '';
-        if (snap.empty) {
+        if (!snapshot.exists()) {
             chatList.innerHTML = `
                 <div class="empty-inbox">
                     <i class="fa fa-comments"></i>
@@ -50,19 +41,30 @@ export function loadChatList() {
                 </div>`;
             return;
         }
-        snap.forEach(d => {
-            const chat = { id: d.id, ...d.data() };
+
+        const chats = [];
+        snapshot.forEach(child => {
+            chats.push({ id: child.key, ...child.val() });
+        });
+
+        // Sort by timestamp desc
+        chats.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+        chats.forEach(chat => {
             chatList.appendChild(_createChatRow(chat));
         });
-    }, err => console.error('Chat list snapshot error:', err));
+    });
 }
 
 function _createChatRow(chat) {
     const card = document.createElement('div');
     card.className = 'chat-row';
 
+    // Per-chat unread: compare timestamp to lastRead (simulated)
+    const lastRead = localStorage.getItem(`lastRead_${chat.chatId}`) || 0;
+    const isUnread = (chat.unreadCount > 0) || (chat.timestamp > lastRead && chat.lastMessage);
+
     const initial = chat.otherUserName?.charAt(0).toUpperCase() || 'U';
-    const unread = chat.unreadCount || 0;
     const timeStr = _formatTime(chat.timestamp);
 
     card.innerHTML = `
@@ -75,7 +77,7 @@ function _createChatRow(chat) {
             <div class="chat-row-regarding">Regarding: ${chat.foodName || ''}</div>
             <div class="chat-row-bottom">
                 <span class="chat-preview">${chat.lastMessage ? _truncate(chat.lastMessage, 45) : 'Start a conversation'}</span>
-                ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}
+                ${isUnread ? `<span class="unread-badge">!</span>` : ''}
             </div>
         </div>
     `;
@@ -95,18 +97,16 @@ function openChatDetail(chat) {
     currentChatId = chat.chatId;
     currentChatMeta = chat;
 
-    // Update header
+    // Header updates
     const nameEl = document.querySelector('.chat-title-info h3');
     const subEl = document.querySelector('.chat-title-info p');
     if (nameEl) nameEl.textContent = chat.otherUserName || 'User';
     if (subEl) subEl.textContent = `Regarding: ${chat.foodName || ''}`;
 
-    // Mark as read — reset unreadCount + lastReadTimestamp in Firestore
-    const chatDocRef = doc(db, 'user_chats', user.uid, 'chats', chat.chatId);
-    updateDoc(chatDocRef, {
-        unreadCount: 0,
-        lastReadTimestamp: Date.now()
-    }).catch(() => { });
+    // Mark as read locally and in RTDB
+    localStorage.setItem(`lastRead_${chat.chatId}`, Date.now());
+    const myChatRef = ref(rtdb, `user_chats/${user.uid}/${chat.chatId}`);
+    update(myChatRef, { unreadCount: 0 }).catch(() => { });
 
     loadMessages(chat.chatId);
 }
@@ -118,16 +118,17 @@ window.backToInbox = () => {
     if (chatDetail) chatDetail.classList.add('hidden');
     currentChatId = null;
     currentChatMeta = null;
-    if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
+    if (messagesUnsub) { off(ref(rtdb, `chats/${currentChatId}`)); messagesUnsub = null; }
     loadChatList();
 };
 
 function loadMessages(chatId) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
-    if (messagesUnsub) messagesUnsub();
+    if (messagesUnsub) off(ref(rtdb, `chats/${chatId}`));
 
-    messagesUnsub = onValue(rtdbRef(rtdb, `chats/${chatId}`), snapshot => {
+    const msgsRef = ref(rtdb, `chats/${chatId}`);
+    messagesUnsub = onValue(msgsRef, snapshot => {
         container.innerHTML = '';
         if (!snapshot.exists()) return;
 
@@ -172,7 +173,7 @@ window.sendMessage = async () => {
     const now = Date.now();
     input.value = '';
 
-    const msgRef = push(rtdbRef(rtdb, `chats/${currentChatId}`));
+    const msgRef = push(ref(rtdb, `chats/${currentChatId}`));
     await set(msgRef, {
         messageId: msgRef.key,
         senderId: user.uid,
@@ -181,48 +182,33 @@ window.sendMessage = async () => {
         timestamp: now
     });
 
-    // Update Firestore user_chats preview for both sides
-    if (currentChatMeta) {
-        const myRef = doc(db, 'user_chats', user.uid, 'chats', currentChatId);
-        await updateDoc(myRef, { lastMessage: text, timestamp: now }).catch(() => { });
+    // Update RTDB user_chats previews for both (Matching MessagesFragment.kt)
+    const myName = user.displayName || user.email?.split('@')[0] || 'User';
+    const otherId = currentChatMeta.otherUserId;
 
-        const otherId = currentChatMeta.otherUserId;
-        if (otherId) {
-            const otherRef = doc(db, 'user_chats', otherId, 'chats', currentChatId);
-            await setDoc(otherRef, {
-                chatId: currentChatId,
-                otherUserId: user.uid,
-                otherUserName: user.displayName || user.email?.split('@')[0] || 'User',
-                foodName: currentChatMeta.foodName || '',
-                lastMessage: text,
-                timestamp: now,
-                unreadCount: 1,
-                lastReadTimestamp: 0
-            }, { merge: true });
-        }
+    if (otherId) {
+        const otherChatRef = ref(rtdb, `user_chats/${otherId}/${currentChatId}`);
+        update(otherChatRef, {
+            lastMessage: text,
+            timestamp: now,
+            unreadCount: 1, // Simple increment
+            otherUserId: user.uid,
+            otherUserName: myName,
+            foodName: currentChatMeta.foodName,
+            chatId: currentChatId
+        });
     }
+
+    const myChatRef = ref(rtdb, `user_chats/${user.uid}/${currentChatId}`);
+    update(myChatRef, { lastMessage: text, timestamp: now });
 };
 
-// Enter key sends message
+// Enter key to send
 document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && document.activeElement?.id === 'chat-input-field') {
         window.sendMessage();
     }
 });
-
-async function _ensureChatMeta(user, chatInfo) {
-    const chatDocRef = doc(db, 'user_chats', user.uid, 'chats', chatInfo.chatId);
-    await setDoc(chatDocRef, {
-        chatId: chatInfo.chatId,
-        otherUserId: chatInfo.donorId,
-        otherUserName: chatInfo.donorName,
-        foodName: chatInfo.foodName,
-        lastMessage: '',
-        timestamp: Date.now(),
-        unreadCount: 0,
-        lastReadTimestamp: Date.now()
-    }, { merge: true });
-}
 
 function _formatTime(ts) {
     if (!ts) return '';
@@ -243,6 +229,3 @@ function _getDateLabel(ts) {
 function _truncate(str, n) {
     return str.length > n ? str.slice(0, n) + '…' : str;
 }
-
-window.loadChatList = loadChatList;
-window.openChatDetail = openChatDetail;

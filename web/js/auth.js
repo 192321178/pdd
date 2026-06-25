@@ -1,121 +1,114 @@
 import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
+    onAuthStateChanged,
+    signOut,
+    GoogleAuthProvider,
     signInWithPopup,
-    updateProfile,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    updateProfile
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import {
-    doc,
-    setDoc,
-    serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { auth, db, googleProvider } from "./firebase-config.js";
+import { ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { auth, rtdb, googleProvider } from "./firebase-config.js";
 
 export function initAuthHandlers() {
-
-    // ----- LOGIN -----
     const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const googleBtn = document.getElementById('btn-google-login');
+    const forgotLink = document.getElementById('forgot-password-link');
+
     loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('login-email').value.trim();
-        const password = document.getElementById('login-password').value;
-        const btn = document.getElementById('btn-login');
-        const err = document.getElementById('login-error');
-        if (err) err.textContent = '';
-        if (btn) { btn.disabled = true; btn.textContent = 'Logging in...'; }
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-password').value;
+        const errorEl = document.getElementById('login-error');
+        errorEl.textContent = '';
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-        } catch (error) {
-            if (err) err.textContent = friendlyAuthError(error.code);
-        } finally {
-            if (btn) { btn.disabled = false; btn.textContent = 'LOGIN'; }
+            await signInWithEmailAndPassword(auth, email, pass);
+        } catch (err) {
+            errorEl.textContent = _getFriendlyError(err.code);
         }
     });
 
-    // ----- FORGOT PASSWORD -----
-    document.getElementById('forgot-password-link')?.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('login-email').value.trim();
-        if (!email) {
-            alert('Please enter your email address above first.');
-            return;
-        }
-        try {
-            await sendPasswordResetEmail(auth, email);
-            alert(`✅ Password reset email sent to ${email}. Check your inbox.`);
-        } catch (error) {
-            alert('Error: ' + friendlyAuthError(error.code));
-        }
-    });
-
-    // ----- SIGNUP -----
-    const signupForm = document.getElementById('signup-form');
     signupForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const name = document.getElementById('signup-name').value.trim();
-        const email = document.getElementById('signup-email').value.trim();
-        const password = document.getElementById('signup-password').value;
-        const confirm = document.getElementById('signup-confirm-password').value;
-        const location = document.getElementById('signup-location').value.trim() || 'Coimbatore';
-        const btn = document.getElementById('btn-signup');
-        const err = document.getElementById('signup-error');
-        if (err) err.textContent = '';
+        const name = document.getElementById('signup-name').value;
+        const email = document.getElementById('signup-email').value;
+        const location = document.getElementById('signup-location').value || 'Coimbatore';
+        const pass = document.getElementById('signup-password').value;
+        const confirmPass = document.getElementById('signup-confirm-password').value;
+        const errorEl = document.getElementById('signup-error');
 
-        if (password !== confirm) {
-            if (err) err.textContent = 'Passwords do not match.';
+        errorEl.textContent = '';
+
+        if (pass !== confirmPass) {
+            errorEl.textContent = "Passwords do not match.";
             return;
         }
-        if (password.length < 6) {
-            if (err) err.textContent = 'Password must be at least 6 characters.';
-            return;
-        }
-        if (btn) { btn.disabled = true; btn.textContent = 'Creating account...'; }
+
         try {
-            const cred = await createUserWithEmailAndPassword(auth, email, password);
-            await updateProfile(cred.user, { displayName: name });
-            // Save to Firestore users/{uid}
-            await setDoc(doc(db, 'users', cred.user.uid), {
-                name,
-                email,
-                location,
-                createdAt: serverTimestamp()
+            const res = await createUserWithEmailAndPassword(auth, email, pass);
+            await updateProfile(res.user, { displayName: name });
+            // Save to RTDB /users/{uid} — Matching ProfileFragment.kt
+            await set(ref(rtdb, `users/${res.user.uid}`), {
+                name: name,
+                email: email,
+                location: location
             });
-        } catch (error) {
-            if (err) err.textContent = friendlyAuthError(error.code);
-        } finally {
-            if (btn) { btn.disabled = false; btn.textContent = 'SIGN UP'; }
+        } catch (err) {
+            errorEl.textContent = _getFriendlyError(err.code);
         }
     });
 
-    // ----- GOOGLE LOGIN -----
-    document.getElementById('btn-google-login')?.addEventListener('click', async () => {
+    googleBtn?.addEventListener('click', async () => {
         try {
-            const result = await signInWithPopup(auth, googleProvider);
-            const user = result.user;
-            // Upsert user doc in Firestore
-            const userRef = doc(db, 'users', user.uid);
-            await setDoc(userRef, {
-                name: user.displayName || 'User',
-                email: user.email,
-                location: 'Coimbatore'
-            }, { merge: true });
-        } catch (error) {
-            alert('Google Sign-In failed: ' + friendlyAuthError(error.code));
+            const res = await signInWithPopup(auth, googleProvider);
+            const user = res.user;
+            // Check if user exists in RTDB, if not create
+            const userRef = ref(rtdb, `users/${user.uid}`);
+            const snap = await get(userRef);
+            if (!snap.exists()) {
+                await set(userRef, {
+                    name: user.displayName || user.email?.split('@')[0] || 'User',
+                    email: user.email || '',
+                    location: 'Coimbatore'
+                });
+            }
+        } catch (err) {
+            console.error('Google login error:', err);
         }
+    });
+
+    forgotLink?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        if (!email) return alert("Please enter your email above to reset password.");
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert("Password reset link sent to your email!");
+        } catch (err) {
+            alert(_getFriendlyError(err.code));
+        }
+    });
+
+    // Toggle screens
+    document.getElementById('go-signup')?.addEventListener('click', () => {
+        document.getElementById('login-screen').classList.remove('active');
+        document.getElementById('signup-screen').classList.add('active');
+    });
+    document.getElementById('go-login')?.addEventListener('click', () => {
+        document.getElementById('signup-screen').classList.remove('active');
+        document.getElementById('login-screen').classList.add('active');
     });
 }
 
-function friendlyAuthError(code) {
-    const map = {
-        'auth/wrong-password': 'Incorrect password. Please try again.',
-        'auth/user-not-found': 'No account found with this email.',
-        'auth/invalid-email': 'Please enter a valid email address.',
-        'auth/email-already-in-use': 'This email is already registered. Try logging in.',
-        'auth/weak-password': 'Password must be at least 6 characters.',
-        'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
-        'auth/invalid-credential': 'Incorrect email or password. Please try again.',
-        'auth/popup-closed-by-user': 'Google sign-in was cancelled.'
-    };
-    return map[code] || 'An error occurred. Please try again.';
+function _getFriendlyError(code) {
+    switch (code) {
+        case 'auth/user-not-found': return 'Account not found.';
+        case 'auth/wrong-password': return 'Incorrect password.';
+        case 'auth/email-already-in-use': return 'Email already registered.';
+        case 'auth/weak-password': return 'Password is too weak.';
+        case 'auth/invalid-email': return 'Invalid email address.';
+        default: return 'Authentication failed. Please try again.';
+    }
 }

@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyASpiUpENpi4h7pL726E1SyKMJDeCQsXvk",
@@ -16,6 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);   // Firestore — food_items, users, user_chats
-export const rtdb = getDatabase(app);  // Realtime DB — chats/{chatId} messages only
+export const rtdb = getDatabase(app); // Primary for all sync features (food, users, chats)
+export const db = getFirestore(app);   // Kept for backward compatibility if needed, but primary is RTDB
 export const googleProvider = new GoogleAuthProvider();
