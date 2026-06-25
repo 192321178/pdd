@@ -45,7 +45,11 @@ export function loadFeed() {
             }
         });
 
-        items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        items.sort((a, b) => {
+            const timeA = a.createdAt || a.timestamp || 0;
+            const timeB = b.createdAt || b.timestamp || 0;
+            return timeB - timeA;
+        });
 
         document.getElementById('listing-count').textContent = `${items.length} listings`;
 

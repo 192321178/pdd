@@ -68,7 +68,8 @@ export function initShare() {
             claimedByUid: "",
             dietaryTags: dietaryTags,
             isAnonymous: isAnonymous,
-            createdAt: serverTimestamp() // Added for sorting
+            createdAt: serverTimestamp(), // Added for sorting
+            timestamp: Date.now()         // Fallback for immediate web sorting
         };
 
         try {
@@ -82,6 +83,7 @@ export function initShare() {
             photoPreview.classList.add('hidden');
             photoPreview.src = '';
             document.querySelector('[data-screen="home"]').click();
+            loadFeed(); // Refresh feed immediately
         } catch (err) {
             alert("Failed to share: " + err.message);
         } finally {
