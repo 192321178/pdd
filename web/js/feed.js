@@ -105,69 +105,82 @@ function _createFoodCard(item) {
 function openFoodDetail(item) {
     const detailScreen = document.getElementById('food-detail-screen');
     detailScreen.classList.remove('hidden');
-    detailScreen.innerHTML = `
-        <div class="detail-android-layout">
-            <div class="detail-image-box">
-                <button class="btn-back-detail" onclick="document.getElementById('food-detail-screen').classList.add('hidden')">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                ${item.imageUri ? `<img src="${item.imageUri}">` : `<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#E8EAED;"><i class="fas fa-utensils fa-3x" style="color:#999;"></i></div>`}
-            </div>
-            <div class="detail-content-scroll">
-                <div class="detail-title-row">
-                    <h2 class="detail-food-name">${item.foodName}</h2>
-                    <div class="countdown-box">
-                        <i class="far fa-clock"></i>
-                        <span>${_getTimeLeft(item.expiryTimeMillis)}</span>
-                    </div>
-                </div>
-                <div class="detail-category-row">
-                    <span class="cat-chip-detail">${item.category}</span>
-                </div>
-                
-                <div class="detail-info-rows">
-                    <div class="info-row"><i class="fas fa-balance-scale"></i> <span>Quantity: ${item.quantity}</span></div>
-                    <div class="info-row"><i class="fas fa-map-marker-alt"></i> <span>${item.location}</span></div>
-                </div>
 
-                <div class="dietary-chips-row">
-                    ${(item.dietaryTags || []).map(t => `<span class="diet-chip">${t}</span>`).join('')}
-                </div>
-
-                <div class="about-section">
-                    <h3>About this food</h3>
-                    <p style="color:#5F6368; line-height:1.6;">${item.description || 'No additional details provided.'}</p>
-                </div>
-
-                <div class="about-section">
-                    <h3>Donor</h3>
-                    <div class="donor-card">
-                        <div class="donor-avatar">${item.userName?.charAt(0).toUpperCase() || 'U'}</div>
-                        <div>
-                            <strong style="display:block;">${item.isAnonymous ? 'Anonymous' : (item.userName || 'User')}</strong>
-                            <span style="font-size:12px;color:#5F6368;">Neighborhood Hero</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="detail-actions" id="detail-actions-box">
-                    ${_getDetailButtons(item)}
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Setup real-time listener for this specific item in detail view
     const itemRef = ref(rtdb, `food_items/${item.id}`);
+
+    // Use onValue as the primary driver for the detail page UI
     onValue(itemRef, snap => {
         if (!snap.exists()) {
             detailScreen.classList.add('hidden');
             return;
         }
-        const updated = { id: item.id, ...snap.val() };
-        const btnBox = document.getElementById('detail-actions-box');
-        if (btnBox) btnBox.innerHTML = _getDetailButtons(updated);
-    });
+        const updatedItem = { id: item.id, ...snap.val() };
+
+        detailScreen.innerHTML = `
+            <div class="detail-android-layout">
+                <div class="detail-image-box">
+                    <button class="btn-back-detail" onclick="document.getElementById('food-detail-screen').classList.add('hidden')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    ${updatedItem.imageUri ? `<img src="${updatedItem.imageUri}">` : `<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#E8EAED;"><i class="fas fa-utensils fa-3x" style="color:#999;"></i></div>`}
+                </div>
+                <div class="detail-content-scroll">
+                    <div class="detail-title-row">
+                        <h2 class="detail-food-name">${updatedItem.foodName}</h2>
+                        <div class="countdown-box">
+                            <i class="far fa-clock"></i>
+                            <span id="detail-countdown">${_getTimeLeft(updatedItem.expiryTimeMillis)}</span>
+                        </div>
+                    </div>
+                    <div class="detail-category-row">
+                        <span class="cat-chip-detail">${updatedItem.category}</span>
+                    </div>
+                    
+                    <div class="detail-info-rows">
+                        <div class="info-row"><i class="fas fa-balance-scale"></i> <span>Quantity: ${updatedItem.quantity}</span></div>
+                        <div class="info-row"><i class="fas fa-map-marker-alt"></i> <span>${updatedItem.location}</span></div>
+                        <div class="info-row"><i class="fas fa-clock"></i> <span>Pickup: Now · Nearby</span></div>
+                    </div>
+
+                    <div class="dietary-chips-row">
+                        ${(updatedItem.dietaryTags || []).map(t => `<span class="diet-chip">${t}</span>`).join('')}
+                    </div>
+
+                    <div class="about-section">
+                        <h3>About this listing</h3>
+                        <p style="color:#5F6368; line-height:1.6;">${updatedItem.description || 'No description provided.'}</p>
+                    </div>
+
+                    <div class="about-section">
+                        <h3>Donor</h3>
+                        <div class="donor-card">
+                            <div class="donor-avatar">${updatedItem.userName?.charAt(0).toUpperCase() || 'U'}</div>
+                            <div style="flex:1">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong>${updatedItem.isAnonymous ? 'Anonymous' : (updatedItem.userName || 'User')}</strong>
+                                    <span class="star-rating">★ 4.8</span>
+                                </div>
+                                <span style="font-size:12px;color:#5F6368;">Neighborhood Hero · 12 donations</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-actions" id="detail-actions-box">
+                        ${_getDetailButtons(updatedItem)}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Start countdown refresh
+        if (window.detailTimer) clearInterval(window.detailTimer);
+        window.detailTimer = setInterval(() => {
+            const el = document.getElementById('detail-countdown');
+            if (el) el.textContent = _getTimeLeft(updatedItem.expiryTimeMillis);
+            else clearInterval(window.detailTimer);
+        }, 1000);
+
+    }, { onlyOnce: false });
 }
 
 function _getDetailButtons(item) {
@@ -255,7 +268,7 @@ window.claimFood = async (id, name, donorId, donorName) => {
 window.messageDonor = (foodId, donorId, donorName, foodName) => {
     const user = auth.currentUser;
     if (!user) return;
-    const chatId = [user.uid, donorId].sort().join('_') + '_' + foodId.substring(0, 5);
+    const chatId = [user.uid, donorId].sort().join('_');
     window.activeClaimChat = { chatId, donorId, donorName, foodName, isAutoOpen: true };
     document.querySelector('[data-screen="message"]').click();
 };
