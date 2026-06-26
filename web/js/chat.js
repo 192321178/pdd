@@ -45,7 +45,7 @@ export function loadChatList() {
         const chats = [];
         snapshot.forEach(child => {
             const chatObj = child.val();
-            // Matching mobile unread logic: compare lastRead from localStorage
+            // Rule #9: Compare timestamp to localStorage lastRead
             const lastRead = localStorage.getItem(`lastRead_${child.key}`) || 0;
             const isUnread = chatObj.timestamp > lastRead && chatObj.lastMessage;
 

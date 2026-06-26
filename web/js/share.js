@@ -76,15 +76,14 @@ export function initShare() {
         try {
             await set(newItemRef, foodItem);
             alert("Food shared successfully! 🎉");
-            // Reset form
-            document.getElementById('share-food-name').value = '';
-            document.getElementById('share-quantity').value = '';
-            document.getElementById('share-location').value = '';
-            document.getElementById('share-description').value = '';
-            photoPreview.classList.add('hidden');
-            photoPreview.src = '';
+            // Reset form and navigate
+            _resetForm(photoPreview);
             document.querySelector('[data-screen="home"]').click();
-            loadFeed(); // Refresh feed immediately
+
+            // Critical: Trigger feed reload to show the new item immediately
+            setTimeout(() => {
+                loadFeed();
+            }, 100);
         } catch (err) {
             alert("Failed to share: " + err.message);
         } finally {
