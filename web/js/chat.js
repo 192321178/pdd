@@ -31,7 +31,9 @@ export function loadChatList() {
     // Real-time RTDB user_chats listener — Matching MessagesFragment.kt
     const userChatsRef = ref(rtdb, `user_chats/${user.uid}`);
     chatListUnsub = onValue(userChatsRef, snapshot => {
+        if (!chatList) return;
         chatList.innerHTML = '';
+
         if (!snapshot.exists()) {
             chatList.innerHTML = `
                 <div class="empty-inbox">
@@ -46,23 +48,26 @@ export function loadChatList() {
         snapshot.forEach(child => {
             const chatObj = child.val();
             // Rule #9: Compare timestamp to localStorage lastRead
-            const lastRead = localStorage.getItem(`lastRead_${child.key}`) || 0;
+            const chatId = child.key;
+            const lastRead = localStorage.getItem(`lastRead_${chatId}`) || 0;
             const isUnread = chatObj.timestamp > lastRead && chatObj.lastMessage;
 
             chats.push({
-                id: child.key,
                 ...chatObj,
-                chatId: child.key,
+                chatId: chatId,
                 isUnread: isUnread
             });
         });
 
-        // Sort by timestamp desc (History first)
+        // Sort by timestamp desc (Newest first)
         chats.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
         chats.forEach(chat => {
             chatList.appendChild(_createChatRow(chat));
         });
+    }, err => {
+        console.error("Chat list listener error:", err);
+        chatList.innerHTML = `<div style="padding:20px;text-align:center;color:red;">Error loading chats.</div>`;
     });
 }
 

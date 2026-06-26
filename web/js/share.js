@@ -95,6 +95,11 @@ export function initShare() {
     // Category chips
     document.querySelectorAll('.cat-chip').forEach(chip => {
         chip.addEventListener('click', () => {
+            // Also reset chips and tags
+            document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+            document.querySelector('[data-cat="Cooked Meal"]')?.classList.add('active');
+            document.querySelectorAll('.diet-tag').forEach(t => t.classList.remove('active'));
+
             document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
         });
