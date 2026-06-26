@@ -140,7 +140,10 @@ function loadMessages(chatId) {
     const msgsRef = ref(rtdb, `chats/${chatId}`);
     messagesUnsub = onValue(msgsRef, snapshot => {
         container.innerHTML = '';
-        if (!snapshot.exists()) return;
+        if (!snapshot.exists()) {
+            container.innerHTML = `<div style="padding: 40px; text-align: center; color: #999;">No messages yet.</div>`;
+            return;
+        }
 
         const msgs = [];
         snapshot.forEach(child => msgs.push({ key: child.key, ...child.val() }));

@@ -32,8 +32,9 @@ export function loadFeed() {
 
         snapshot.forEach(child => {
             const val = child.val();
-            // Match Android logic: filter expired locally
-            if (val.expiryTimeMillis > 0 && now > val.expiryTimeMillis) return;
+            // Matching mobile: Keep history visible. We only filter if we strictly want "active only"
+            // For the main feed, we show items but mark them as Expired.
+            // if (val.expiryTimeMillis > 0 && now > val.expiryTimeMillis) return; 
 
             // Filter by search and category
             const matchesCategory = category === 'all' || val.category === category;
@@ -73,19 +74,20 @@ function _createFoodCard(item) {
     const card = document.createElement('div');
     card.className = 'food-card';
 
-    const isClaimed = item.isClaimed;
-    const timeStr = _getTimeLeft(item.expiryTimeMillis);
+    const isExpired = item.expiryTimeMillis > 0 && Date.now() > item.expiryTimeMillis;
+    const timeStr = isExpired ? 'Expired' : _getTimeLeft(item.expiryTimeMillis);
     const initial = item.userName?.charAt(0).toUpperCase() || 'U';
 
     card.innerHTML = `
-        <div class="card-image-wrap">
+        <div class="card-image-wrap ${isExpired ? 'expired-wrap' : ''}">
             ${item.imageUri ? `<img src="${item.imageUri}" alt="${item.foodName}">` : `<div class="no-image-placeholder"><i class="fas fa-utensils"></i></div>`}
             <div class="card-cat-badge">${item.category}</div>
             ${isClaimed ? `<div class="claimed-banner"><span>CLAIMED ✓</span></div>` : ''}
+            ${isExpired && !isClaimed ? `<div class="expired-banner"><span>EXPIRED</span></div>` : ''}
         </div>
         <div class="card-body">
             <div class="card-row-top">
-                <span class="card-time-left ${timeStr.includes('mins') ? 'urgent' : ''}">${timeStr}</span>
+                <span class="card-time-left ${isExpired ? 'expired' : (timeStr.includes('mins') ? 'urgent' : '')}">${timeStr}</span>
                 <span class="star-rating">★ 4.8</span>
             </div>
             <h3 class="card-title">${item.foodName}</h3>
