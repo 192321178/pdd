@@ -44,10 +44,20 @@ export function loadChatList() {
 
         const chats = [];
         snapshot.forEach(child => {
-            chats.push({ id: child.key, ...child.val() });
+            const chatObj = child.val();
+            // Matching mobile unread logic: compare lastRead from localStorage
+            const lastRead = localStorage.getItem(`lastRead_${child.key}`) || 0;
+            const isUnread = chatObj.timestamp > lastRead && chatObj.lastMessage;
+
+            chats.push({
+                id: child.key,
+                ...chatObj,
+                chatId: child.key,
+                isUnread: isUnread
+            });
         });
 
-        // Sort by timestamp desc
+        // Sort by timestamp desc (History first)
         chats.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
         chats.forEach(chat => {

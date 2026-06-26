@@ -1,5 +1,6 @@
 import { ref, push, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { auth, rtdb } from "./firebase-config.js";
+import { loadFeed } from "./feed.js";
 
 export function initShare() {
     const photoBox = document.getElementById('photo-upload-box');

@@ -68,17 +68,26 @@ function _setupStatsListeners(user) {
         let donations = 0;
         let claims = 0;
         const uid = user.uid;
+        const userName = user.displayName || user.email?.split('@')[0] || 'User';
 
         snapshot.forEach(child => {
             const item = child.val();
-            if (item.userUid === uid) donations++;
-            if (item.claimedByUid === uid) claims++;
+            // Matching ProfileFragment.kt: loadStats logic
+            const isDonor = item.userUid === uid || (item.userUid === "" && item.userName === userName);
+            const isClaimer = item.claimedByUid === uid;
+
+            if (isDonor) donations++;
+            if (isClaimer) claims++;
         });
+
+        // 0.9kg per donation, 2.5kg CO2 per donation (matching Kotlin logic)
+        const foodKg = donations * 0.9;
+        const co2Kg = donations * 2.5;
 
         document.getElementById('stat-donations').textContent = donations;
         document.getElementById('stat-claims').textContent = claims;
-        document.getElementById('stat-kg').textContent = (donations * 0.9).toFixed(1);
-        document.getElementById('stat-co2').textContent = (donations * 2.5).toFixed(1);
+        document.getElementById('stat-kg').textContent = foodKg.toFixed(1);
+        document.getElementById('stat-co2').textContent = co2Kg.toFixed(1);
 
         _updateBadges(donations, claims);
     });
@@ -115,15 +124,21 @@ function _setupLeaderboard() {
     if (!lbContainer) return;
 
     onValue(ref(rtdb, 'food_items'), snapshot => {
-        const stats = {};
+        const userDonations = {}; // Map of UID or Name to {name, count}
+
         snapshot.forEach(child => {
             const item = child.val();
-            const key = item.userUid || item.userName || 'Anonymous';
-            if (!stats[key]) stats[key] = { name: item.isAnonymous ? 'Anonymous' : (item.userName || 'User'), count: 0 };
-            stats[key].count++;
+            if (!item.userUid || item.userUid === "") {
+                const name = item.userName || "Anonymous";
+                if (!userDonations[name]) userDonations[name] = { name: name, count: 0 };
+                userDonations[name].count++;
+            } else {
+                if (!userDonations[item.userUid]) userDonations[item.userUid] = { name: item.userName || "User", count: 0 };
+                userDonations[item.userUid].count++;
+            }
         });
 
-        const sorted = Object.values(stats).sort((a, b) => b.count - a.count).slice(0, 5);
+        const sorted = Object.values(userDonations).sort((a, b) => b.count - a.count).slice(0, 5);
         const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
 
         lbContainer.innerHTML = sorted.map((u, i) => `

@@ -1,8 +1,7 @@
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import {
-    collection, query, onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { auth, db } from "./firebase-config.js";
+import { collection, query, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { auth, db, rtdb } from "./firebase-config.js";
 
 const SCREENS = ['home', 'map', 'share', 'message', 'profile', 'food-detail'];
 let _unreadUnsub = null;
@@ -16,7 +15,10 @@ export function navigateTo(screenId) {
         ? document.getElementById('food-detail-screen')
         : document.getElementById(`${screenId}-screen`);
 
-    if (target) target.classList.add('active');
+    if (target) {
+        target.classList.add('active');
+        target.classList.remove('hidden'); // Ensure it's not hidden
+    }
 
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     if (isMain) {
@@ -93,12 +95,21 @@ export function setupApp() {
 
 function _subscribeUnreadBadge(uid) {
     if (_unreadUnsub) _unreadUnsub();
-    const q = collection(db, 'user_chats', uid, 'chats');
-    _unreadUnsub = onSnapshot(q, snap => {
+
+    // Switch to RTDB user_chats to match mobile
+    const userChatsRef = ref(rtdb, `user_chats/${uid}`);
+    _unreadUnsub = onValue(userChatsRef, snapshot => {
         let total = 0;
-        snap.forEach(d => { total += (d.data().unreadCount || 0); });
+        snapshot.forEach(child => {
+            const chat = child.val();
+            // Matching mobile: check lastMessage timestamp against simulated lastRead
+            const lastRead = localStorage.getItem(`lastRead_${child.key}`) || 0;
+            if (chat.timestamp > lastRead && chat.lastMessage) {
+                total += 1;
+            }
+        });
         _setBellBadge(total);
-    }, () => { });
+    });
 }
 
 function _setBellBadge(count) {
