@@ -105,3 +105,17 @@ export function initShare() {
         tag.addEventListener('click', () => tag.classList.toggle('active'));
     });
 }
+function _resetForm(photoPreview) {
+    document.getElementById('share-food-name').value = '';
+    document.getElementById('share-quantity').value = '';
+    document.getElementById('share-location').value = '';
+    document.getElementById('share-description').value = '';
+    if (photoPreview) {
+        photoPreview.classList.add('hidden');
+        photoPreview.src = '';
+    }
+    // Also reset chips
+    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+    document.querySelector('[data-cat="Cooked Meal"]')?.classList.add('active');
+    document.querySelectorAll('.diet-tag').forEach(t => t.classList.remove('active'));
+}
