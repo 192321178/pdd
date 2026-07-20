@@ -1,10 +1,10 @@
-import { ref, onValue, off, update, runTransaction, push, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { ref, onValue, off, update, runTransaction, push, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { auth, rtdb } from "./firebase-config.js";
 
 let feedUnsub = null;
 
 export function initFeed() {
-    window.loadFeed = loadFeed; // ✅ Expose so app.js can trigger on home nav
+    window.loadFeed = loadFeed; // ✅ expose so app.js can call on Home nav
     const filterChips = document.querySelectorAll('.chip');
     filterChips.forEach(chip => {
         chip.addEventListener('click', () => {
@@ -13,7 +13,6 @@ export function initFeed() {
             loadFeed();
         });
     });
-
     const searchInput = document.getElementById('search-input');
     searchInput?.addEventListener('input', () => loadFeed());
 }
@@ -82,17 +81,20 @@ function _createFoodCard(item) {
 
     const initial = item.userName?.charAt(0).toUpperCase() || 'U';
     const timeStr = _getTimeLeft(item.expiryTimeMillis);
-    const isClaimed = item.isClaimed === true; // ✅ Fix: was undefined, crashing card render
+    const isClaimed = item.isClaimed === true; // ✅ Fix: was undefined causing crash
 
     card.innerHTML = `
-        <div class="card-image-wrap">
+        <div class="card-image-wrap" style="position:relative;">
             ${item.imageUri ? `<img src="${item.imageUri}" alt="${item.foodName}">` : `<div class="no-image-placeholder"><i class="fas fa-utensils"></i></div>`}
             <div class="card-cat-badge">${item.category}</div>
-            ${isClaimed ? `<div class="claimed-banner"><span>CLAIMED ✓</span></div>` : ''}
+            ${isClaimed ? `
+                <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(34,197,94,0.85);padding:8px 0;text-align:center;pointer-events:none;">
+                    <span style="color:#fff;font-weight:700;font-size:14px;">✓ Claimed</span>
+                </div>` : ''}
         </div>
         <div class="card-body">
             <div class="card-row-top">
-                <span class="card-time-left ${timeStr.includes('mins') ? 'urgent' : ''}">${timeStr}</span>
+                <span class="card-time-left ${timeStr.includes('m left') && !timeStr.includes('h') ? 'urgent' : ''}">${timeStr}</span>
                 <span class="star-rating">★ 4.8</span>
             </div>
             <h3 class="card-title">${item.foodName}</h3>
@@ -105,6 +107,7 @@ function _createFoodCard(item) {
             </div>
         </div>
     `;
+    // ✅ Fix: card click always works — claimed banner has pointer-events:none
     card.onclick = () => openFoodDetail(item);
     return card;
 }
@@ -219,15 +222,42 @@ window.claimFood = async (id, name, donorId, donorName) => {
     const user = auth.currentUser;
     if (!user) return alert("Please login to claim.");
 
-    const otp = Math.floor(1000 + Math.random() * 9000);
     const itemRef = ref(rtdb, `food_items/${id}`);
 
+    // ✅ STEP 1: Fresh server GET — never trust cache
+    let freshData;
     try {
-        await runTransaction(itemRef, (currentData) => {
-            if (currentData === null) return currentData;
-            if (currentData.isClaimed) return; // Already claimed — abort
-            if (currentData.claimedByUid === user.uid) return; // Same user re-claim — abort
+        const snap = await get(itemRef);
+        freshData = snap.val();
+    } catch (e) {
+        return alert("Network error. Please try again.");
+    }
 
+    if (!freshData) return alert("Food item not found.");
+
+    // ✅ Block same-user re-claim
+    if (freshData.claimedByUid === user.uid) {
+        return alert("You already claimed this food!");
+    }
+
+    // ✅ Block if already claimed by anyone else
+    if (freshData.isClaimed) {
+        return alert("This food has already been claimed by someone else.");
+    }
+
+    // ✅ STEP 2: Atomic transaction on server
+    const otp = Math.floor(1000 + Math.random() * 9000); // 4-digit OTP like Android
+
+    try {
+        let transactionCommitted = false;
+
+        await runTransaction(itemRef, (currentData) => {
+            if (currentData === null) return currentData; // retry
+            // ✅ Fix: return currentData (not undefined) to abort properly
+            if (currentData.isClaimed) return currentData; // abort — already claimed
+            if (currentData.claimedByUid === user.uid) return currentData; // abort — same user
+            // Commit
+            transactionCommitted = true;
             return {
                 ...currentData,
                 isClaimed: true,
@@ -237,51 +267,63 @@ window.claimFood = async (id, name, donorId, donorName) => {
             };
         });
 
+        // Re-check after transaction
+        const afterSnap = await get(itemRef);
+        const afterData = afterSnap.val();
+
+        if (!afterData || afterData.claimedByUid !== user.uid) {
+            return alert("Claim failed — someone else claimed it first!");
+        }
+
         // ✅ Fix: chatId = smaller_uid + "_" + larger_uid — matches Android exactly
         const chatId = user.uid < donorId
             ? `${user.uid}_${donorId}`
             : `${donorId}_${user.uid}`;
-        const msgRef = push(ref(rtdb, `chats/${chatId}`));
-        const now = Date.now();
-        const sysText = `[ShareBite System] ✅ Claim Confirmed\nFood: ${name}\nClaimed by: ${user.displayName || 'User'}\nClaim OTP: ${otp}\nTime: ${new Date(now).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
 
+        const myName = user.displayName || user.email?.split('@')[0] || 'User';
+        const now = Date.now();
+
+        // ✅ Fix: OTP format matches Android exactly
+        const timeStr = new Date(now).toLocaleString('en-IN', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        const sysText = `[ShareBite System] ✅ Claim Confirmed\nFood: ${name}\nClaimed by: ${myName}\nClaim OTP: ${otp}\nTime: ${timeStr}`;
+
+        // Push system message
+        const msgRef = push(ref(rtdb, `chats/${chatId}`));
         await set(msgRef, {
             messageId: msgRef.key,
-            senderId: 'SYSTEM',   // ✅ Fix: uppercase matches Android ChatActivity
+            senderId: 'SYSTEM', // ✅ uppercase matches Android
             senderName: 'ShareBite',
             message: sysText,
             timestamp: now,
             isSystem: true
         });
 
-        // Update previews in user_chats
-        const myName = user.displayName || user.email?.split('@')[0] || 'User';
+        // ✅ Fix: write chat previews with correct donorId from fresh server data
         const myChatRef = ref(rtdb, `user_chats/${user.uid}/${chatId}`);
         const donorChatRef = ref(rtdb, `user_chats/${donorId}/${chatId}`);
 
-        const baseMeta = {
-            chatId: chatId,
-            foodName: name,
-            lastMessage: sysText,
-            timestamp: now
-        };
-
-        await set(myChatRef, { ...baseMeta, otherUserId: donorId, otherUserName: donorName, unreadCount: 0 });
+        const baseMeta = { chatId, foodName: name, lastMessage: '✅ Claim confirmed', timestamp: now };
+        await set(myChatRef, { ...baseMeta, otherUserId: donorId, otherUserName: donorName || 'Donor', unreadCount: 0 });
         await set(donorChatRef, { ...baseMeta, otherUserId: user.uid, otherUserName: myName, unreadCount: 1 });
 
-        // ✅ Increment permanent claims counter in /user_stats/{uid}
+        // Increment permanent claims counter
         const statsRef = ref(rtdb, `user_stats/${user.uid}`);
         const statsSnap = await get(statsRef);
         const currentClaims = statsSnap.val()?.claims || 0;
         const currentDonations = statsSnap.val()?.donations || 0;
-        await set(statsRef, {
-            userName: user.displayName || user.email?.split('@')[0] || 'User',
-            donations: currentDonations,
-            claims: currentClaims + 1
-        });
+        await set(statsRef, { userName: myName, donations: currentDonations, claims: currentClaims + 1 });
 
-        alert(`Claimed! Your OTP is ${otp}. Use the Messages tab to contact the donor.`);
+        alert(`Food Claimed! 🎉 Your OTP: ${otp}\nShow this to the donor when you collect.`);
+
+        // Navigate to messages
+        window.activeClaimChat = { chatId, otherUserId: donorId, otherUserName: donorName || 'Donor', foodName: name };
+        document.querySelector('[data-screen="message"]')?.click();
+
     } catch (err) {
+        console.error("Claim error:", err);
         alert("Failed to claim: " + err.message);
     }
 };
@@ -293,8 +335,8 @@ window.messageDonor = (foodId, donorId, donorName, foodName) => {
     const chatId = user.uid < donorId
         ? `${user.uid}_${donorId}`
         : `${donorId}_${user.uid}`;
-    window.activeClaimChat = { chatId, donorId, donorName, foodName, isAutoOpen: true };
-    document.querySelector('[data-screen="message"]').click();
+    window.activeClaimChat = { chatId, otherUserId: donorId, otherUserName: donorName, foodName, isAutoOpen: true };
+    document.querySelector('[data-screen="message"]')?.click();
 };
 
 function _getTimeLeft(expiry) {

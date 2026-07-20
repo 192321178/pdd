@@ -20,11 +20,17 @@ export function loadChatList() {
     chatList.classList.remove('hidden');
     chatDetail.classList.add('hidden');
 
-    // Handle auto-open (Message Donor)
+    // Handle auto-open (Message Donor / after claim)
     const autoOpen = window.activeClaimChat;
-    if (autoOpen?.isAutoOpen) {
+    if (autoOpen?.isAutoOpen || autoOpen?.chatId) {
         delete window.activeClaimChat;
-        openChatDetail(autoOpen);
+        // ✅ Fix: normalize field names from both old and new claimFood/messageDonor
+        openChatDetail({
+            chatId: autoOpen.chatId,
+            otherUserId: autoOpen.otherUserId || autoOpen.donorId,
+            otherUserName: autoOpen.otherUserName || autoOpen.donorName || 'Donor',
+            foodName: autoOpen.foodName || ''
+        });
         return;
     }
 
@@ -131,8 +137,7 @@ window.backToInbox = () => {
     const chatDetail = document.getElementById('chat-detail-view');
     if (chatList) chatList.classList.remove('hidden');
     if (chatDetail) chatDetail.classList.add('hidden');
-
-    // ✅ Fix: save chatId BEFORE clearing — was clearing first then trying to use it
+    // ✅ Fix: save chatId before clearing — was clearing then trying to use it
     const leavingChatId = currentChatId;
     currentChatId = null;
     currentChatMeta = null;
@@ -172,7 +177,7 @@ function loadMessages(chatId) {
             }
 
             const isMe = msg.senderId === auth.currentUser?.uid;
-            // ✅ Fix: check both 'SYSTEM' (Android) and 'system' (old web) for compatibility
+            // ✅ Fix: check both 'SYSTEM' (Android/fixed web) and 'system' (old web) for compatibility
             const isSystem = msg.isSystem || msg.senderId === 'SYSTEM' || msg.senderId === 'system';
 
             const bubble = document.createElement('div');
