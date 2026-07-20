@@ -26,6 +26,7 @@ export function navigateTo(screenId) {
     }
 
     if (screenId === 'map') setTimeout(() => window.loadMap?.(), 300);
+    else if (screenId === 'home') window.loadFeed?.();
     else if (screenId === 'message') window.loadChatList?.();
     else if (screenId === 'profile') window.loadProfile?.();
 }
@@ -96,13 +97,29 @@ export function setupApp() {
 function _subscribeUnreadBadge(uid) {
     if (_unreadUnsub) _unreadUnsub();
 
-    // Switch to RTDB user_chats to match mobile
     const userChatsRef = ref(rtdb, `user_chats/${uid}`);
+
+    // ✅ Fix: seed all existing chats as "read" on first login per device
+    // Prevents old chats from showing as unread when user logs in fresh
+    const seededKey = `seeded_${uid}`;
+    if (!localStorage.getItem(seededKey)) {
+        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js")
+            .then(({ get }) => get(userChatsRef))
+            .then(snapshot => {
+                snapshot.forEach(child => {
+                    const chatId = child.key;
+                    if (!localStorage.getItem(`lastRead_${chatId}`)) {
+                        localStorage.setItem(`lastRead_${chatId}`, Date.now());
+                    }
+                });
+                localStorage.setItem(seededKey, 'true');
+            }).catch(() => { });
+    }
+
     _unreadUnsub = onValue(userChatsRef, snapshot => {
         let total = 0;
         snapshot.forEach(child => {
             const chat = child.val();
-            // Matching mobile: check lastMessage timestamp against simulated lastRead
             const lastRead = localStorage.getItem(`lastRead_${child.key}`) || 0;
             if (chat.timestamp > lastRead && chat.lastMessage) {
                 total += 1;

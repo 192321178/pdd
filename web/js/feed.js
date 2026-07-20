@@ -1,9 +1,10 @@
-import { ref, onValue, off, update, runTransaction, push, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { ref, onValue, off, update, runTransaction, push, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { auth, rtdb } from "./firebase-config.js";
 
 let feedUnsub = null;
 
 export function initFeed() {
+    window.loadFeed = loadFeed; // ✅ Expose so app.js can trigger on home nav
     const filterChips = document.querySelectorAll('.chip');
     filterChips.forEach(chip => {
         chip.addEventListener('click', () => {
@@ -81,6 +82,7 @@ function _createFoodCard(item) {
 
     const initial = item.userName?.charAt(0).toUpperCase() || 'U';
     const timeStr = _getTimeLeft(item.expiryTimeMillis);
+    const isClaimed = item.isClaimed === true; // ✅ Fix: was undefined, crashing card render
 
     card.innerHTML = `
         <div class="card-image-wrap">
@@ -223,7 +225,8 @@ window.claimFood = async (id, name, donorId, donorName) => {
     try {
         await runTransaction(itemRef, (currentData) => {
             if (currentData === null) return currentData;
-            if (currentData.isClaimed) return; // Already claimed/cancelled
+            if (currentData.isClaimed) return; // Already claimed — abort
+            if (currentData.claimedByUid === user.uid) return; // Same user re-claim — abort
 
             return {
                 ...currentData,
@@ -234,16 +237,18 @@ window.claimFood = async (id, name, donorId, donorName) => {
             };
         });
 
-        // Send System Message to donor chat
-        const chatId = [user.uid, donorId].sort().join('_') + '_' + id.substring(0, 5);
+        // ✅ Fix: chatId = smaller_uid + "_" + larger_uid — matches Android exactly
+        const chatId = user.uid < donorId
+            ? `${user.uid}_${donorId}`
+            : `${donorId}_${user.uid}`;
         const msgRef = push(ref(rtdb, `chats/${chatId}`));
         const now = Date.now();
-        const sysText = `System: ${user.displayName || 'A user'} has claimed your "${name}".\nOTP: ${otp}\nPlease coordinate pickup.`;
+        const sysText = `[ShareBite System] ✅ Claim Confirmed\nFood: ${name}\nClaimed by: ${user.displayName || 'User'}\nClaim OTP: ${otp}\nTime: ${new Date(now).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
 
         await set(msgRef, {
             messageId: msgRef.key,
-            senderId: 'system',
-            senderName: 'System',
+            senderId: 'SYSTEM',   // ✅ Fix: uppercase matches Android ChatActivity
+            senderName: 'ShareBite',
             message: sysText,
             timestamp: now,
             isSystem: true
@@ -264,6 +269,17 @@ window.claimFood = async (id, name, donorId, donorName) => {
         await set(myChatRef, { ...baseMeta, otherUserId: donorId, otherUserName: donorName, unreadCount: 0 });
         await set(donorChatRef, { ...baseMeta, otherUserId: user.uid, otherUserName: myName, unreadCount: 1 });
 
+        // ✅ Increment permanent claims counter in /user_stats/{uid}
+        const statsRef = ref(rtdb, `user_stats/${user.uid}`);
+        const statsSnap = await get(statsRef);
+        const currentClaims = statsSnap.val()?.claims || 0;
+        const currentDonations = statsSnap.val()?.donations || 0;
+        await set(statsRef, {
+            userName: user.displayName || user.email?.split('@')[0] || 'User',
+            donations: currentDonations,
+            claims: currentClaims + 1
+        });
+
         alert(`Claimed! Your OTP is ${otp}. Use the Messages tab to contact the donor.`);
     } catch (err) {
         alert("Failed to claim: " + err.message);
@@ -273,7 +289,10 @@ window.claimFood = async (id, name, donorId, donorName) => {
 window.messageDonor = (foodId, donorId, donorName, foodName) => {
     const user = auth.currentUser;
     if (!user) return;
-    const chatId = [user.uid, donorId].sort().join('_');
+    // ✅ Fix: chatId = smaller_uid + "_" + larger_uid — matches Android exactly
+    const chatId = user.uid < donorId
+        ? `${user.uid}_${donorId}`
+        : `${donorId}_${user.uid}`;
     window.activeClaimChat = { chatId, donorId, donorName, foodName, isAutoOpen: true };
     document.querySelector('[data-screen="message"]').click();
 };

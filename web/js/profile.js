@@ -61,26 +61,14 @@ function _setupUserListener(user) {
 }
 
 function _setupStatsListeners(user) {
-    if (statsUnsub) off(ref(rtdb, 'food_items'), 'value', statsUnsub);
+    if (statsUnsub) off(ref(rtdb, `user_stats/${user.uid}`), 'value', statsUnsub);
 
-    const foodRef = ref(rtdb, 'food_items');
-    statsUnsub = onValue(foodRef, snapshot => {
-        let donations = 0;
-        let claims = 0;
-        const uid = user.uid;
-        const userName = user.displayName || user.email?.split('@')[0] || 'User';
-
-        snapshot.forEach(child => {
-            const item = child.val();
-            // Matching ProfileFragment.kt: loadStats logic
-            const isDonor = item.userUid === uid || (item.userUid === "" && item.userName === userName);
-            const isClaimer = item.claimedByUid === uid;
-
-            if (isDonor) donations++;
-            if (isClaimer) claims++;
-        });
-
-        // 0.9kg per donation, 2.5kg CO2 per donation (matching Kotlin logic)
+    // ✅ Fix: read from permanent /user_stats/{uid} — not /food_items which gets deleted
+    const statsRef = ref(rtdb, `user_stats/${user.uid}`);
+    statsUnsub = onValue(statsRef, snapshot => {
+        const data = snapshot.val() || {};
+        const donations = data.donations || 0;
+        const claims = data.claims || 0;
         const foodKg = donations * 0.9;
         const co2Kg = donations * 2.5;
 
@@ -105,7 +93,7 @@ function _updateBadges(d, c) {
     if (c >= 1) earned.push({ icon: '🤚', label: 'First Claim', desc: '1st claim' });
 
     if (earned.length === 0) {
-        container.innerHTML = `<div class="badge-lock"><i class="fas fa-lock"></i> <span>No badges yet — share food to unlock!</span></div>`;
+        container.innerHTML = `<div class="badge-lock" style="display:flex;align-items:center;gap:8px;padding:12px;color:#5F6368;"><span style="font-size:20px;">🔒</span><span>No badges yet — share food to unlock!</span></div>`;
     } else {
         container.innerHTML = earned.map(b => `
             <div class="badge-item">
@@ -123,23 +111,25 @@ function _setupLeaderboard() {
     const lbContainer = document.getElementById('leaderboard-list');
     if (!lbContainer) return;
 
-    onValue(ref(rtdb, 'food_items'), snapshot => {
-        const userDonations = {}; // Map of UID or Name to {name, count}
+    // ✅ Fix: read from /user_stats — permanent, never deleted
+    onValue(ref(rtdb, 'user_stats'), snapshot => {
+        const entries = [];
 
         snapshot.forEach(child => {
-            const item = child.val();
-            if (!item.userUid || item.userUid === "") {
-                const name = item.userName || "Anonymous";
-                if (!userDonations[name]) userDonations[name] = { name: name, count: 0 };
-                userDonations[name].count++;
-            } else {
-                if (!userDonations[item.userUid]) userDonations[item.userUid] = { name: item.userName || "User", count: 0 };
-                userDonations[item.userUid].count++;
+            const data = child.val();
+            const donations = data.donations || 0;
+            if (donations > 0) {
+                entries.push({ name: data.userName || 'User', count: donations });
             }
         });
 
-        const sorted = Object.values(userDonations).sort((a, b) => b.count - a.count).slice(0, 5);
+        const sorted = entries.sort((a, b) => b.count - a.count).slice(0, 5);
         const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+
+        if (sorted.length === 0) {
+            lbContainer.innerHTML = `<div style="padding:16px;text-align:center;color:#5F6368;">No donations yet. Be the first! 🌟</div>`;
+            return;
+        }
 
         lbContainer.innerHTML = sorted.map((u, i) => `
             <div class="leaderboard-row">

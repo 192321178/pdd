@@ -1,4 +1,4 @@
-import { ref, push, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { ref, push, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { auth, rtdb } from "./firebase-config.js";
 import { loadFeed } from "./feed.js";
 
@@ -75,6 +75,18 @@ export function initShare() {
 
         try {
             await set(newItemRef, foodItem);
+
+            // ✅ Increment permanent donations counter in /user_stats/{uid}
+            const statsRef = ref(rtdb, `user_stats/${user.uid}`);
+            const statsSnap = await get(statsRef);
+            const currentDonations = statsSnap.val()?.donations || 0;
+            const currentClaims = statsSnap.val()?.claims || 0;
+            await set(statsRef, {
+                userName: user.displayName || user.email?.split('@')[0] || 'User',
+                donations: currentDonations + 1,
+                claims: currentClaims
+            });
+
             alert("Food shared successfully! 🎉");
             // Reset form and navigate
             _resetForm(photoPreview);

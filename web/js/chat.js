@@ -131,9 +131,15 @@ window.backToInbox = () => {
     const chatDetail = document.getElementById('chat-detail-view');
     if (chatList) chatList.classList.remove('hidden');
     if (chatDetail) chatDetail.classList.add('hidden');
+
+    // ✅ Fix: save chatId BEFORE clearing — was clearing first then trying to use it
+    const leavingChatId = currentChatId;
     currentChatId = null;
     currentChatMeta = null;
-    if (messagesUnsub) { off(ref(rtdb, `chats/${currentChatId}`)); messagesUnsub = null; }
+    if (messagesUnsub && leavingChatId) {
+        off(ref(rtdb, `chats/${leavingChatId}`));
+        messagesUnsub = null;
+    }
     loadChatList();
 };
 
@@ -166,7 +172,8 @@ function loadMessages(chatId) {
             }
 
             const isMe = msg.senderId === auth.currentUser?.uid;
-            const isSystem = msg.isSystem || msg.senderId === 'system';
+            // ✅ Fix: check both 'SYSTEM' (Android) and 'system' (old web) for compatibility
+            const isSystem = msg.isSystem || msg.senderId === 'SYSTEM' || msg.senderId === 'system';
 
             const bubble = document.createElement('div');
             bubble.className = isSystem ? 'msg-bubble system-msg' : (isMe ? 'msg-bubble sent' : 'msg-bubble received');
