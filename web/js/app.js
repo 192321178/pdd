@@ -1,6 +1,6 @@
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { collection, query, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { auth, db, rtdb } from "./firebase-config.js";
 
 const SCREENS = ['home', 'map', 'share', 'message', 'profile', 'food-detail'];
@@ -98,35 +98,39 @@ function _subscribeUnreadBadge(uid) {
     if (_unreadUnsub) _unreadUnsub();
 
     const userChatsRef = ref(rtdb, `user_chats/${uid}`);
-
-    // ✅ Fix: seed all existing chats as "read" on first login per device
-    // Prevents old chats from showing as unread when user logs in fresh
     const seededKey = `seeded_${uid}`;
-    if (!localStorage.getItem(seededKey)) {
-        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js")
-            .then(({ get }) => get(userChatsRef))
-            .then(snapshot => {
-                snapshot.forEach(child => {
-                    const chatId = child.key;
-                    if (!localStorage.getItem(`lastRead_${chatId}`)) {
-                        localStorage.setItem(`lastRead_${chatId}`, Date.now());
-                    }
-                });
-                localStorage.setItem(seededKey, 'true');
-            }).catch(() => { });
-    }
 
-    _unreadUnsub = onValue(userChatsRef, snapshot => {
-        let total = 0;
-        snapshot.forEach(child => {
-            const chat = child.val();
-            const lastRead = localStorage.getItem(`lastRead_${child.key}`) || 0;
-            if (chat.timestamp > lastRead && chat.lastMessage) {
-                total += 1;
-            }
+    const startListener = () => {
+        _unreadUnsub = onValue(userChatsRef, snapshot => {
+            let total = 0;
+            snapshot.forEach(child => {
+                const chat = child.val();
+                const lastRead = parseInt(localStorage.getItem(`lastRead_${child.key}`) || 0);
+                if (chat.timestamp > lastRead && chat.lastMessage) {
+                    total += 1;
+                }
+            });
+            _setBellBadge(total);
         });
-        _setBellBadge(total);
-    });
+    };
+
+    if (!localStorage.getItem(seededKey)) {
+        get(userChatsRef).then(snapshot => {
+            snapshot.forEach(child => {
+                const chatId = child.key;
+                if (!localStorage.getItem(`lastRead_${chatId}`)) {
+                    localStorage.setItem(`lastRead_${chatId}`, Date.now().toString());
+                }
+            });
+            localStorage.setItem(seededKey, 'true');
+            startListener();
+        }).catch(err => {
+            console.error("Unread badge seed failure:", err);
+            startListener();
+        });
+    } else {
+        startListener();
+    }
 }
 
 function _setBellBadge(count) {

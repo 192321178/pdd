@@ -114,14 +114,14 @@ function _createFoodCard(item) {
 
 function openFoodDetail(item) {
     const detailScreen = document.getElementById('food-detail-screen');
-    detailScreen.classList.remove('hidden');
+    window.navigateTo('food-detail');
 
     const itemRef = ref(rtdb, `food_items/${item.id}`);
 
     // Use onValue as the primary driver for the detail page UI
     onValue(itemRef, snap => {
         if (!snap.exists()) {
-            detailScreen.classList.add('hidden');
+            window.navigateTo('home');
             return;
         }
         const updatedItem = { id: item.id, ...snap.val() };
@@ -129,7 +129,7 @@ function openFoodDetail(item) {
         detailScreen.innerHTML = `
             <div class="detail-android-layout">
                 <div class="detail-image-box">
-                    <button class="btn-back-detail" onclick="document.getElementById('food-detail-screen').classList.add('hidden')">
+                    <button class="btn-back-detail" onclick="window.navigateTo('home')">
                         <i class="fas fa-arrow-left"></i>
                     </button>
                     ${updatedItem.imageUri ? `<img src="${updatedItem.imageUri}">` : `<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#E8EAED;"><i class="fas fa-utensils fa-3x" style="color:#999;"></i></div>`}

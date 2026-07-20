@@ -7,7 +7,7 @@ let messagesUnsub = null;
 let chatListUnsub = null;
 
 export function initChat() {
-    // Handled via loadChatList from app.js navigation
+    window.loadChatList = loadChatList;
 }
 
 export function loadChatList() {
