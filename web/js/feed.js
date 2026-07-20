@@ -112,85 +112,117 @@ function _createFoodCard(item) {
     return card;
 }
 
+// ✅ Track listener so we can detach it on next open
+let _detailUnsub = null;
+
 function openFoodDetail(item) {
     const detailScreen = document.getElementById('food-detail-screen');
     window.navigateTo('food-detail');
 
+    // ✅ Fix: always detach previous listener before attaching new one
+    if (_detailUnsub) {
+        _detailUnsub();
+        _detailUnsub = null;
+    }
+    if (window.detailTimer) { clearInterval(window.detailTimer); window.detailTimer = null; }
+
     const itemRef = ref(rtdb, `food_items/${item.id}`);
 
-    // Use onValue as the primary driver for the detail page UI
-    onValue(itemRef, snap => {
+    // onValue returns the unsubscribe function directly
+    _detailUnsub = onValue(itemRef, snap => {
         if (!snap.exists()) {
             window.navigateTo('home');
             return;
         }
-        const updatedItem = { id: item.id, ...snap.val() };
+        const d = { id: item.id, ...snap.val() };
+        const initial = d.userName?.charAt(0).toUpperCase() || 'U';
+        const dietary = (d.dietaryTags || []).map(t => `<span class="diet-chip">${t}</span>`).join('');
 
         detailScreen.innerHTML = `
-            <div class="detail-android-layout">
-                <div class="detail-image-box">
-                    <button class="btn-back-detail" onclick="window.navigateTo('home')">
-                        <i class="fas fa-arrow-left"></i>
+            <div class="detail-web-layout">
+                <!-- LEFT: back button + image -->
+                <div class="detail-web-left">
+                    <button class="btn-back-detail-web" onclick="window.navigateTo('home')">
+                        <i class="fas fa-arrow-left"></i> Back to Feed
                     </button>
-                    ${updatedItem.imageUri ? `<img src="${updatedItem.imageUri}">` : `<div style="height:100%;display:flex;align-items:center;justify-content:center;background:#E8EAED;"><i class="fas fa-utensils fa-3x" style="color:#999;"></i></div>`}
-                </div>
-                <div class="detail-content-scroll">
-                    <div class="detail-title-row">
-                        <h2 class="detail-food-name">${updatedItem.foodName}</h2>
-                        <div class="countdown-box">
-                            <i class="far fa-clock"></i>
-                            <span id="detail-countdown">${_getTimeLeft(updatedItem.expiryTimeMillis)}</span>
+                    <div class="detail-web-image-box">
+                        ${d.imageUri
+                ? `<img src="${d.imageUri}" alt="${d.foodName}">`
+                : `<div class="detail-no-img"><i class="fas fa-utensils fa-4x" style="color:#ccc;"></i></div>`}
+                    </div>
+                    <!-- Donor card below image on left -->
+                    <div class="detail-web-donor-card">
+                        <div class="donor-avatar">${initial}</div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong style="font-size:15px;">${d.isAnonymous ? 'Anonymous' : (d.userName || 'User')}</strong>
+                                <span class="star-rating">★ 4.8</span>
+                            </div>
+                            <span style="font-size:12px;color:#5F6368;">Neighborhood Hero</span>
                         </div>
                     </div>
-                    <div class="detail-category-row">
-                        <span class="cat-chip-detail">${updatedItem.category}</span>
-                    </div>
-                    
-                    <div class="detail-info-rows">
-                        <div class="info-row"><i class="fas fa-balance-scale"></i> <span>Quantity: ${updatedItem.quantity}</span></div>
-                        <div class="info-row"><i class="fas fa-map-marker-alt"></i> <span>${updatedItem.location}</span></div>
-                        <div class="info-row"><i class="fas fa-clock"></i> <span>Pickup: Now · Nearby</span></div>
+                </div>
+
+                <!-- RIGHT: details -->
+                <div class="detail-web-right">
+                    <div class="detail-web-top-row">
+                        <h1 class="detail-web-title">${d.foodName}</h1>
+                        <div class="detail-web-countdown">
+                            <i class="far fa-clock"></i>
+                            <span id="detail-countdown">${_getTimeLeft(d.expiryTimeMillis)}</span>
+                        </div>
                     </div>
 
-                    <div class="dietary-chips-row">
-                        ${(updatedItem.dietaryTags || []).map(t => `<span class="diet-chip">${t}</span>`).join('')}
+                    <div class="detail-meta-chips">
+                        <span class="cat-chip-detail">${d.category}</span>
+                        ${dietary}
                     </div>
 
-                    <div class="about-section">
-                        <h3>About this listing</h3>
-                        <p style="color:#5F6368; line-height:1.6;">${updatedItem.description || 'No description provided.'}</p>
-                    </div>
-
-                    <div class="about-section">
-                        <h3>Donor</h3>
-                        <div class="donor-card">
-                            <div class="donor-avatar">${updatedItem.userName?.charAt(0).toUpperCase() || 'U'}</div>
-                            <div style="flex:1">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <strong>${updatedItem.isAnonymous ? 'Anonymous' : (updatedItem.userName || 'User')}</strong>
-                                    <span class="star-rating">★ 4.8</span>
-                                </div>
-                                <span style="font-size:12px;color:#5F6368;">Neighborhood Hero · 12 donations</span>
+                    <div class="detail-info-grid">
+                        <div class="detail-info-cell">
+                            <i class="fas fa-balance-scale"></i>
+                            <div>
+                                <div class="info-cell-label">Quantity</div>
+                                <div class="info-cell-value">${d.quantity}</div>
+                            </div>
+                        </div>
+                        <div class="detail-info-cell">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <div>
+                                <div class="info-cell-label">Pickup Location</div>
+                                <div class="info-cell-value">${d.location}</div>
+                            </div>
+                        </div>
+                        <div class="detail-info-cell">
+                            <i class="fas fa-clock"></i>
+                            <div>
+                                <div class="info-cell-label">Pickup window</div>
+                                <div class="info-cell-value">Now · Nearby</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="detail-actions" id="detail-actions-box">
-                        ${_getDetailButtons(updatedItem)}
+                    <div class="detail-web-section">
+                        <h3>About this listing</h3>
+                        <p>${d.description || 'No description provided.'}</p>
+                    </div>
+
+                    <div class="detail-web-actions">
+                        ${_getDetailButtons(d)}
                     </div>
                 </div>
             </div>
         `;
 
-        // Start countdown refresh
+        // Live countdown ticker
         if (window.detailTimer) clearInterval(window.detailTimer);
         window.detailTimer = setInterval(() => {
             const el = document.getElementById('detail-countdown');
-            if (el) el.textContent = _getTimeLeft(updatedItem.expiryTimeMillis);
+            if (el) el.textContent = _getTimeLeft(d.expiryTimeMillis);
             else clearInterval(window.detailTimer);
         }, 1000);
 
-    }, { onlyOnce: false });
+    });
 }
 
 function _getDetailButtons(item) {

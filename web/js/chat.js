@@ -233,12 +233,16 @@ window.sendMessage = async () => {
     update(myChatRef, { lastMessage: text, timestamp: now });
 };
 
-// Enter key to send
+// ✅ Fix: use event delegation so Enter always fires on the live input element
 document.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && document.activeElement?.id === 'chat-input-field') {
+    if (e.key !== 'Enter') return;
+    const input = document.getElementById('chat-input-field');
+    if (document.activeElement === input && input?.value.trim()) {
+        e.preventDefault();
         window.sendMessage();
     }
 });
+
 
 function _formatTime(ts) {
     if (!ts) return '';
