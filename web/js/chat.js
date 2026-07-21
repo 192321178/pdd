@@ -1,14 +1,25 @@
-import { ref, onValue, off, push, set, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { ref, onValue, push, set, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { auth, rtdb } from "./firebase-config.js";
 
 let currentChatId = null;
 let currentChatMeta = null;
-let messagesUnsub = null;
-let chatListUnsub = null;
+let messagesUnsub = null;   // ✅ holds the unsubscribe fn returned by onValue()
+let chatListUnsub = null;   // ✅ holds the unsubscribe fn returned by onValue()
 
 export function initChat() {
     window.loadChatList = loadChatList;
 }
+
+// ─── Helper: always get the freshest display name from RTDB ──────────────────
+async function _getMyName(user) {
+    try {
+        const snap = await get(ref(rtdb, `users/${user.uid}`));
+        return snap.val()?.name || user.displayName || user.email?.split('@')[0] || 'User';
+    } catch {
+        return user.displayName || user.email?.split('@')[0] || 'User';
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function loadChatList() {
     const user = auth.currentUser;
@@ -16,15 +27,16 @@ export function loadChatList() {
     const chatDetail = document.getElementById('chat-detail-view');
     if (!user || !chatList || !chatDetail) return;
 
-    if (chatListUnsub) off(ref(rtdb, `user_chats/${user.uid}`), 'value', chatListUnsub);
+    // ✅ Fix: call the unsub function, NOT off()
+    if (chatListUnsub) { chatListUnsub(); chatListUnsub = null; }
+
     chatList.classList.remove('hidden');
     chatDetail.classList.add('hidden');
 
-    // Handle auto-open (Message Donor / after claim)
+    // Auto-open after claim / message-donor
     const autoOpen = window.activeClaimChat;
     if (autoOpen?.isAutoOpen || autoOpen?.chatId) {
         delete window.activeClaimChat;
-        // ✅ Fix: normalize field names from both old and new claimFood/messageDonor
         openChatDetail({
             chatId: autoOpen.chatId,
             otherUserId: autoOpen.otherUserId || autoOpen.donorId,
@@ -34,10 +46,9 @@ export function loadChatList() {
         return;
     }
 
-    // Real-time RTDB user_chats listener — Matching MessagesFragment.kt
+    // Real-time inbox listener
     const userChatsRef = ref(rtdb, `user_chats/${user.uid}`);
     chatListUnsub = onValue(userChatsRef, snapshot => {
-        if (!chatList) return;
         chatList.innerHTML = '';
 
         if (!snapshot.exists()) {
@@ -50,27 +61,31 @@ export function loadChatList() {
             return;
         }
 
-        const chats = [];
+        const chatPromises = [];
         snapshot.forEach(child => {
             const chatObj = child.val();
-            // Rule #9: Compare timestamp to localStorage lastRead
             const chatId = child.key;
-            const lastRead = localStorage.getItem(`lastRead_${chatId}`) || 0;
-            const isUnread = chatObj.timestamp > lastRead && chatObj.lastMessage;
-
-            chats.push({
-                ...chatObj,
-                chatId: chatId,
-                isUnread: isUnread
-            });
+            chatPromises.push((async () => {
+                let liveName = chatObj.otherUserName;
+                if (chatObj.otherUserId) {
+                    try {
+                        const snap = await get(ref(rtdb, `users/${chatObj.otherUserId}`));
+                        if (snap.val()?.name) liveName = snap.val().name;
+                    } catch (e) {
+                        // ignore and use cached
+                    }
+                }
+                const lastRead = parseInt(localStorage.getItem(`lastRead_${chatId}`) || 0);
+                const isUnread = (chatObj.unreadCount > 0) || (chatObj.timestamp > lastRead && chatObj.lastMessage);
+                return { ...chatObj, chatId, isUnread, otherUserName: liveName };
+            })());
         });
 
-        // Sort by timestamp desc (Newest first)
-        chats.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-        chats.forEach(chat => {
-            chatList.appendChild(_createChatRow(chat));
+        Promise.all(chatPromises).then(chats => {
+            chats.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            chats.forEach(chat => chatList.appendChild(_createChatRow(chat)));
         });
+
     }, err => {
         console.error("Chat list listener error:", err);
         chatList.innerHTML = `<div style="padding:20px;text-align:center;color:red;">Error loading chats.</div>`;
@@ -81,10 +96,8 @@ function _createChatRow(chat) {
     const card = document.createElement('div');
     card.className = 'chat-row';
 
-    // Per-chat unread: compare timestamp to lastRead (simulated)
-    const lastRead = localStorage.getItem(`lastRead_${chat.chatId}`) || 0;
+    const lastRead = parseInt(localStorage.getItem(`lastRead_${chat.chatId}`) || 0);
     const isUnread = (chat.unreadCount > 0) || (chat.timestamp > lastRead && chat.lastMessage);
-
     const initial = chat.otherUserName?.charAt(0).toUpperCase() || 'U';
     const timeStr = _formatTime(chat.timestamp);
 
@@ -118,16 +131,14 @@ function openChatDetail(chat) {
     currentChatId = chat.chatId;
     currentChatMeta = chat;
 
-    // Header updates
     const nameEl = document.querySelector('.chat-title-info h3');
     const subEl = document.querySelector('.chat-title-info p');
     if (nameEl) nameEl.textContent = chat.otherUserName || 'User';
     if (subEl) subEl.textContent = `Regarding: ${chat.foodName || ''}`;
 
-    // Mark as read locally and in RTDB
-    localStorage.setItem(`lastRead_${chat.chatId}`, Date.now());
-    const myChatRef = ref(rtdb, `user_chats/${user.uid}/${chat.chatId}`);
-    update(myChatRef, { unreadCount: 0 }).catch(() => { });
+    // Mark as read
+    localStorage.setItem(`lastRead_${chat.chatId}`, Date.now().toString());
+    update(ref(rtdb, `user_chats/${user.uid}/${chat.chatId}`), { unreadCount: 0 }).catch(() => { });
 
     loadMessages(chat.chatId);
 }
@@ -137,27 +148,26 @@ window.backToInbox = () => {
     const chatDetail = document.getElementById('chat-detail-view');
     if (chatList) chatList.classList.remove('hidden');
     if (chatDetail) chatDetail.classList.add('hidden');
-    // ✅ Fix: save chatId before clearing — was clearing then trying to use it
-    const leavingChatId = currentChatId;
+
+    // ✅ Fix: call the unsub function before clearing state
+    if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
     currentChatId = null;
     currentChatMeta = null;
-    if (messagesUnsub && leavingChatId) {
-        off(ref(rtdb, `chats/${leavingChatId}`));
-        messagesUnsub = null;
-    }
     loadChatList();
 };
 
 function loadMessages(chatId) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
-    if (messagesUnsub) off(ref(rtdb, `chats/${chatId}`));
+
+    // ✅ Fix: call unsub properly — old off(ref) was killing the NEW listener immediately
+    if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
 
     const msgsRef = ref(rtdb, `chats/${chatId}`);
     messagesUnsub = onValue(msgsRef, snapshot => {
         container.innerHTML = '';
         if (!snapshot.exists()) {
-            container.innerHTML = `<div style="padding: 40px; text-align: center; color: #999;">No messages yet.</div>`;
+            container.innerHTML = `<div style="padding:40px;text-align:center;color:#999;">No messages yet.</div>`;
             return;
         }
 
@@ -177,15 +187,12 @@ function loadMessages(chatId) {
             }
 
             const isMe = msg.senderId === auth.currentUser?.uid;
-            // ✅ Fix: check both 'SYSTEM' (Android/fixed web) and 'system' (old web) for compatibility
             const isSystem = msg.isSystem || msg.senderId === 'SYSTEM' || msg.senderId === 'system';
 
             const bubble = document.createElement('div');
             bubble.className = isSystem ? 'msg-bubble system-msg' : (isMe ? 'msg-bubble sent' : 'msg-bubble received');
-
-            const lines = msg.message ? msg.message.replace(/\n/g, '<br>') : '';
             bubble.innerHTML = `
-                <div class="msg-text">${lines}</div>
+                <div class="msg-text">${msg.message ? msg.message.replace(/\n/g, '<br>') : ''}</div>
                 <div class="msg-time">${_formatTime(msg.timestamp)}</div>
             `;
             container.appendChild(bubble);
@@ -203,37 +210,51 @@ window.sendMessage = async () => {
     const now = Date.now();
     input.value = '';
 
+    // ✅ Fix: get the latest name from RTDB profile, not stale auth.displayName
+    const myName = await _getMyName(user);
+
+    // ✅ Robust fallback: extract otherId from chatId if metadata is broken
+    let otherId = currentChatMeta?.otherUserId;
+    if (!otherId && currentChatId) {
+        const parts = currentChatId.split('_');
+        otherId = parts.find(p => p !== user.uid);
+    }
+
     const msgRef = push(ref(rtdb, `chats/${currentChatId}`));
     await set(msgRef, {
         messageId: msgRef.key,
         senderId: user.uid,
-        senderName: user.displayName || user.email?.split('@')[0] || 'User',
+        senderName: myName,
         message: text,
         timestamp: now
     });
 
-    // Update RTDB user_chats previews for both (Matching MessagesFragment.kt)
-    const myName = user.displayName || user.email?.split('@')[0] || 'User';
-    const otherId = currentChatMeta.otherUserId;
-
+    // Update previews for recipient
     if (otherId) {
-        const otherChatRef = ref(rtdb, `user_chats/${otherId}/${currentChatId}`);
-        update(otherChatRef, {
+        update(ref(rtdb, `user_chats/${otherId}/${currentChatId}`), {
             lastMessage: text,
             timestamp: now,
-            unreadCount: 1, // Simple increment
+            unreadCount: 1,
             otherUserId: user.uid,
-            otherUserName: myName,
-            foodName: currentChatMeta.foodName,
+            otherUserName: myName,         // ✅ always fresh name
+            foodName: currentChatMeta?.foodName || '',
             chatId: currentChatId
         });
     }
 
-    const myChatRef = ref(rtdb, `user_chats/${user.uid}/${currentChatId}`);
-    update(myChatRef, { lastMessage: text, timestamp: now });
+    // Update my own preview
+    update(ref(rtdb, `user_chats/${user.uid}/${currentChatId}`), {
+        lastMessage: text,
+        timestamp: now,
+        unreadCount: 0,
+        otherUserId: otherId || '',
+        otherUserName: currentChatMeta?.otherUserName || 'User',
+        foodName: currentChatMeta?.foodName || '',
+        chatId: currentChatId
+    });
 };
 
-// ✅ Fix: use event delegation so Enter always fires on the live input element
+// Enter key to send
 document.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
     const input = document.getElementById('chat-input-field');
@@ -242,7 +263,6 @@ document.addEventListener('keydown', e => {
         window.sendMessage();
     }
 });
-
 
 function _formatTime(ts) {
     if (!ts) return '';
