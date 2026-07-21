@@ -30,6 +30,7 @@ export function loadChatList() {
     // ✅ Fix: call the unsub function, NOT off()
     if (chatListUnsub) { chatListUnsub(); chatListUnsub = null; }
 
+    // ✅ Only show inbox / hide detail when explicitly navigating here, not on every data refresh
     chatList.classList.remove('hidden');
     chatDetail.classList.add('hidden');
 
@@ -46,9 +47,25 @@ export function loadChatList() {
         return;
     }
 
+    _subscribeInbox(user);
+}
+
+// Separate function so the onValue doesn't manage layout
+function _subscribeInbox(user) {
+    const chatList = document.getElementById('chat-list');
+    if (!chatList) return;
+    if (chatListUnsub) { chatListUnsub(); chatListUnsub = null; }
+
     // Real-time inbox listener
     const userChatsRef = ref(rtdb, `user_chats/${user.uid}`);
     chatListUnsub = onValue(userChatsRef, snapshot => {
+        // ✅ CRITICAL FIX: if the chat detail view is open, don't touch the DOM at all
+        const chatDetail = document.getElementById('chat-detail-view');
+        if (chatDetail && !chatDetail.classList.contains('hidden')) {
+            // Update only the unread badge in the bell without touching DOM
+            return;
+        }
+
         chatList.innerHTML = '';
 
         if (!snapshot.exists()) {
@@ -153,7 +170,10 @@ window.backToInbox = () => {
     if (messagesUnsub) { messagesUnsub(); messagesUnsub = null; }
     currentChatId = null;
     currentChatMeta = null;
-    loadChatList();
+
+    // Refresh inbox data without navigation side-effects
+    const user = auth.currentUser;
+    if (user) _subscribeInbox(user);
 };
 
 function loadMessages(chatId) {

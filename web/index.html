@@ -40,9 +40,14 @@
                     <div class="android-input-field">
                         <input type="email" id="login-email" placeholder="Email address" autocomplete="off" required>
                     </div>
-                    <div class="android-input-field">
+                    <div class="android-input-field" style="position: relative;">
                         <input type="password" id="login-password" placeholder="Password" autocomplete="new-password"
-                            required>
+                            required style="padding-right: 40px;">
+                        <button type="button" class="btn-eye-toggle"
+                            onclick="window.togglePassword('login-password', this)"
+                            style="position: absolute; right: 10px; top: 12px; background: none; border: none; color: #999; cursor: pointer;">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </div>
                     <div style="text-align:right; margin-bottom:8px;">
                         <a href="#" id="forgot-password-link" class="green-link">Forgot password?</a>
@@ -96,8 +101,14 @@
                     <div class="android-input-field">
                         <input type="text" id="signup-location" placeholder="City / Area (e.g. Coimbatore)">
                     </div>
-                    <div class="android-input-field">
-                        <input type="password" id="signup-password" placeholder="Password (min 6 chars)" required>
+                    <div class="android-input-field" style="position: relative;">
+                        <input type="password" id="signup-password" placeholder="Password (min 6 chars)"
+                            autocomplete="new-password" required style="padding-right: 40px;">
+                        <button type="button" class="btn-eye-toggle"
+                            onclick="window.togglePassword('signup-password', this)"
+                            style="position: absolute; right: 10px; top: 12px; background: none; border: none; color: #999; cursor: pointer;">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </div>
                     <div class="android-input-field">
                         <input type="password" id="signup-confirm-password" placeholder="Confirm password" required>
