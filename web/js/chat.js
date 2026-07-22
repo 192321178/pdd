@@ -221,6 +221,18 @@ function loadMessages(chatId) {
     });
 }
 
+// ─── Helper: always get fresh display name for any UID from RTDB ───────────────
+async function _getUserName(uid) {
+    if (!uid) return 'User';
+    try {
+        const snap = await get(ref(rtdb, `users/${uid}`));
+        return snap.val()?.name || auth.currentUser?.displayName || 'User';
+    } catch {
+        return auth.currentUser?.displayName || 'User';
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 window.sendMessage = async () => {
     const input = document.getElementById('chat-input-field');
     const user = auth.currentUser;
@@ -230,15 +242,17 @@ window.sendMessage = async () => {
     const now = Date.now();
     input.value = '';
 
-    // ✅ Fix: get the latest name from RTDB profile, not stale auth.displayName
-    const myName = await _getMyName(user);
-
-    // ✅ Robust fallback: extract otherId from chatId if metadata is broken
+    // Extract recipient UID from chatId (format: uid1_uid2)
     let otherId = currentChatMeta?.otherUserId;
-    if (!otherId && currentChatId) {
+    if (!otherId && currentChatId && currentChatId.includes('_')) {
         const parts = currentChatId.split('_');
         otherId = parts.find(p => p !== user.uid);
     }
+
+    // Always fetch fresh names from RTDB
+    const myName = await _getUserName(user.uid);
+    const otherName = otherId ? await _getUserName(otherId) : (currentChatMeta?.otherUserName || 'User');
+    const foodName = currentChatMeta?.foodName || 'Food';
 
     const msgRef = push(ref(rtdb, `chats/${currentChatId}`));
     await set(msgRef, {
@@ -249,17 +263,17 @@ window.sendMessage = async () => {
         timestamp: now
     });
 
-    // Update previews for recipient
+    // Update recipient preview
     if (otherId) {
         update(ref(rtdb, `user_chats/${otherId}/${currentChatId}`), {
             lastMessage: text,
             timestamp: now,
             unreadCount: 1,
             otherUserId: user.uid,
-            otherUserName: myName,         // ✅ always fresh name
-            foodName: currentChatMeta?.foodName || '',
+            otherUserName: myName,
+            foodName: foodName,
             chatId: currentChatId
-        });
+        }).catch(err => console.error("Recipient preview error:", err));
     }
 
     // Update my own preview
@@ -268,10 +282,10 @@ window.sendMessage = async () => {
         timestamp: now,
         unreadCount: 0,
         otherUserId: otherId || '',
-        otherUserName: currentChatMeta?.otherUserName || 'User',
-        foodName: currentChatMeta?.foodName || '',
+        otherUserName: otherName,
+        foodName: foodName,
         chatId: currentChatId
-    });
+    }).catch(err => console.error("My preview error:", err));
 };
 
 // Enter key to send

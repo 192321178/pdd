@@ -118,6 +118,7 @@ let _detailUnsub = null;
 function openFoodDetail(item) {
     const detailScreen = document.getElementById('food-detail-screen');
     window.navigateTo('food-detail');
+    window.currentDetailItem = item;
 
     // ✅ Fix: always detach previous listener before attaching new one
     if (_detailUnsub) {
@@ -135,6 +136,7 @@ function openFoodDetail(item) {
             return;
         }
         const d = { id: item.id, ...snap.val() };
+        window.currentDetailItem = d;
         const initial = d.userName?.charAt(0).toUpperCase() || 'U';
         const dietary = (d.dietaryTags || []).map(t => `<span class="diet-chip">${t}</span>`).join('');
 
@@ -239,7 +241,7 @@ function _getDetailButtons(item) {
                     <p style="color:#2E7D32;font-weight:800;margin-bottom:4px;">Claimed by you! ✓</p>
                     <p style="font-size:13px;color:#333;">Your OTP: <strong style="font-size:18px;color:var(--primary);">${item.claimOtp || '----'}</strong></p>
                 </div>
-                <button class="btn-web-msg" onclick="window.messageDonor('${item.id}', '${item.userUid}', '${item.userName}', '${item.foodName}')">
+                <button class="btn-web-msg" onclick="window.triggerMessageCurrentDonor()">
                     <i class="fas fa-comment"></i> MESSAGE DONOR
                 </button>
             `;
@@ -247,8 +249,18 @@ function _getDetailButtons(item) {
             return `<button class="btn-web-claim" disabled style="background:#BDC1C6;">SOMEONE ELSE CLAIMED THIS</button>`;
         }
     }
-    return `<button class="btn-web-claim" onclick="window.claimFood('${item.id}', '${item.foodName}', '${item.userUid}', '${item.userName}')">CLAIM FOOD</button>`;
+    return `<button class="btn-web-claim" onclick="window.triggerClaimCurrentFood()">CLAIM FOOD</button>`;
 }
+
+window.triggerClaimCurrentFood = () => {
+    const item = window.currentDetailItem;
+    if (item) window.claimFood(item.id, item.foodName, item.userUid, item.userName);
+};
+
+window.triggerMessageCurrentDonor = () => {
+    const item = window.currentDetailItem;
+    if (item) window.messageDonor(item.id, item.userUid, item.userName, item.foodName);
+};
 
 window.claimFood = async (id, name, donorId, donorName) => {
     const user = auth.currentUser;
@@ -277,19 +289,23 @@ window.claimFood = async (id, name, donorId, donorName) => {
         return alert("This food has already been claimed by someone else.");
     }
 
-    // ✅ STEP 2: Atomic transaction on server
+    // ✅ STEP 2: Fetch current profile name from RTDB (not stale auth.displayName)
+    let myName;
+    try {
+        const profileSnap = await get(ref(rtdb, `users/${user.uid}`));
+        myName = profileSnap.val()?.name || user.displayName || user.email?.split('@')[0] || 'User';
+    } catch {
+        myName = user.displayName || user.email?.split('@')[0] || 'User';
+    }
+
+    // ✅ STEP 3: Atomic transaction on server
     const otp = Math.floor(1000 + Math.random() * 9000); // 4-digit OTP like Android
 
     try {
-        let transactionCommitted = false;
-
         await runTransaction(itemRef, (currentData) => {
             if (currentData === null) return currentData; // retry
-            // ✅ Fix: return currentData (not undefined) to abort properly
             if (currentData.isClaimed) return currentData; // abort — already claimed
             if (currentData.claimedByUid === user.uid) return currentData; // abort — same user
-            // Commit
-            transactionCommitted = true;
             return {
                 ...currentData,
                 isClaimed: true,
@@ -307,12 +323,11 @@ window.claimFood = async (id, name, donorId, donorName) => {
             return alert("Claim failed — someone else claimed it first!");
         }
 
-        // ✅ Fix: chatId = smaller_uid + "_" + larger_uid — matches Android exactly
+        // ✅ chatId = smaller_uid + "_" + larger_uid — matches Android exactly
         const chatId = user.uid < donorId
             ? `${user.uid}_${donorId}`
             : `${donorId}_${user.uid}`;
 
-        const myName = user.displayName || user.email?.split('@')[0] || 'User';
         const now = Date.now();
 
         // ✅ Fix: OTP format matches Android exactly
@@ -360,14 +375,21 @@ window.claimFood = async (id, name, donorId, donorName) => {
     }
 };
 
-window.messageDonor = (foodId, donorId, donorName, foodName) => {
+window.messageDonor = async (foodId, donorId, donorName, foodName) => {
     const user = auth.currentUser;
-    if (!user) return;
-    // ✅ Fix: chatId = smaller_uid + "_" + larger_uid — matches Android exactly
+    if (!user) return alert("Please login first!");
+
     const chatId = user.uid < donorId
         ? `${user.uid}_${donorId}`
         : `${donorId}_${user.uid}`;
-    window.activeClaimChat = { chatId, otherUserId: donorId, otherUserName: donorName, foodName, isAutoOpen: true };
+
+    let realDonorName = donorName;
+    try {
+        const donorSnap = await get(ref(rtdb, `users/${donorId}`));
+        if (donorSnap.val()?.name) realDonorName = donorSnap.val().name;
+    } catch (e) {}
+
+    window.activeClaimChat = { chatId, otherUserId: donorId, otherUserName: realDonorName || 'Donor', foodName: foodName || 'Food', isAutoOpen: true };
     document.querySelector('[data-screen="message"]')?.click();
 };
 
