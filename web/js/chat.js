@@ -59,10 +59,9 @@ function _subscribeInbox(user) {
     // Real-time inbox listener
     const userChatsRef = ref(rtdb, `user_chats/${user.uid}`);
     chatListUnsub = onValue(userChatsRef, snapshot => {
-        // ✅ CRITICAL FIX: if the chat detail view is open, don't touch the DOM at all
+        // ✅ If chat detail view is active, do not re-render inbox DOM
         const chatDetail = document.getElementById('chat-detail-view');
         if (chatDetail && !chatDetail.classList.contains('hidden')) {
-            // Update only the unread badge in the bell without touching DOM
             return;
         }
 
@@ -79,26 +78,71 @@ function _subscribeInbox(user) {
         }
 
         const chatPromises = [];
+        const seenPartners = new Set();
+
         snapshot.forEach(child => {
             const chatObj = child.val();
-            const chatId = child.key;
+            const rawKey = child.key;
+
             chatPromises.push((async () => {
-                let liveName = chatObj.otherUserName;
-                if (chatObj.otherUserId) {
-                    try {
-                        const snap = await get(ref(rtdb, `users/${chatObj.otherUserId}`));
-                        if (snap.val()?.name) liveName = snap.val().name;
-                    } catch (e) {
-                        // ignore and use cached
+                let otherId = chatObj.otherUserId;
+                if ((!otherId || otherId === user.uid) && rawKey && rawKey.includes('_')) {
+                    const parts = rawKey.split('_');
+                    otherId = parts.find(p => p !== user.uid) || otherId;
+                }
+
+                let finalChatId = rawKey;
+                if (otherId && otherId !== user.uid) {
+                    const canonicalId = user.uid < otherId
+                        ? `${user.uid}_${otherId}`
+                        : `${otherId}_${user.uid}`;
+
+                    // Auto-migrate legacy non-canonical chat keys
+                    if (rawKey !== canonicalId) {
+                        try {
+                            const oldMsgsSnap = await get(ref(rtdb, `chats/${rawKey}`));
+                            if (oldMsgsSnap.exists()) {
+                                const oldMsgs = oldMsgsSnap.val();
+                                for (const mKey in oldMsgs) {
+                                    await set(ref(rtdb, `chats/${canonicalId}/${mKey}`), oldMsgs[mKey]);
+                                }
+                            }
+                            await set(ref(rtdb, `user_chats/${user.uid}/${rawKey}`), null);
+                        } catch (e) {
+                            console.error("Migration error:", e);
+                        }
+                        finalChatId = canonicalId;
                     }
                 }
-                const lastRead = parseInt(localStorage.getItem(`lastRead_${chatId}`) || 0);
-                const isUnread = (chatObj.unreadCount > 0) || (chatObj.timestamp > lastRead && chatObj.lastMessage);
-                return { ...chatObj, chatId, isUnread, otherUserName: liveName };
+
+                // Fetch fresh display name for partner from /users/{otherId}
+                let liveName = chatObj.otherUserName;
+                if (otherId && otherId !== user.uid) {
+                    try {
+                        const snap = await get(ref(rtdb, `users/${otherId}`));
+                        if (snap.val()?.name) liveName = snap.val().name;
+                    } catch (e) {}
+                } else {
+                    liveName = 'User';
+                }
+
+                const isUnread = Boolean(chatObj.unreadCount > 0);
+                return { ...chatObj, chatId: finalChatId, isUnread, otherUserId: otherId, otherUserName: liveName };
             })());
         });
 
-        Promise.all(chatPromises).then(chats => {
+        Promise.all(chatPromises).then(rawChats => {
+            // Deduplicate inbox rows by partner / chatId so no double rows exist
+            const chatsMap = new Map();
+            rawChats.forEach(c => {
+                if (!c) return;
+                const existing = chatsMap.get(c.chatId);
+                if (!existing || (c.timestamp || 0) > (existing.timestamp || 0)) {
+                    chatsMap.set(c.chatId, c);
+                }
+            });
+
+            const chats = Array.from(chatsMap.values());
             chats.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             chats.forEach(chat => chatList.appendChild(_createChatRow(chat)));
         });
