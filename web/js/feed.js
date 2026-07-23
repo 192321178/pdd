@@ -81,7 +81,19 @@ function _createFoodCard(item) {
 
     const initial = item.userName?.charAt(0).toUpperCase() || 'U';
     const timeStr = _getTimeLeft(item.expiryTimeMillis);
-    const isClaimed = item.isClaimed === true; // ✅ Fix: was undefined causing crash
+    const isClaimed = item.isClaimed === true;
+
+    // Async fetch donor rating for feed card
+    const ratingSpanId = `card-rating-${item.id}`;
+    if (item.userUid) {
+        get(ref(rtdb, `user_stats/${item.userUid}`)).then(snap => {
+            if (snap.exists()) {
+                const avg = snap.val()?.avgRating;
+                const el = document.getElementById(ratingSpanId);
+                if (el && avg > 0) el.textContent = `★ ${avg}`;
+            }
+        }).catch(() => {});
+    }
 
     card.innerHTML = `
         <div class="card-image-wrap" style="position:relative;">
@@ -95,7 +107,7 @@ function _createFoodCard(item) {
         <div class="card-body">
             <div class="card-row-top">
                 <span class="card-time-left ${timeStr.includes('m left') && !timeStr.includes('h') ? 'urgent' : ''}">${timeStr}</span>
-                <span class="star-rating">★ 4.8</span>
+                <span class="star-rating" id="${ratingSpanId}">★ 4.8</span>
             </div>
             <h3 class="card-title">${item.foodName}</h3>
             <p class="card-text-secondary">${_truncate(item.description || 'Fresh and ready to pick up!', 60)}</p>
@@ -107,7 +119,6 @@ function _createFoodCard(item) {
             </div>
         </div>
     `;
-    // ✅ Fix: card click always works — claimed banner has pointer-events:none
     card.onclick = () => openFoodDetail(item);
     return card;
 }
@@ -120,7 +131,6 @@ function openFoodDetail(item) {
     window.navigateTo('food-detail');
     window.currentDetailItem = item;
 
-    // ✅ Fix: always detach previous listener before attaching new one
     if (_detailUnsub) {
         _detailUnsub();
         _detailUnsub = null;
@@ -129,7 +139,6 @@ function openFoodDetail(item) {
 
     const itemRef = ref(rtdb, `food_items/${item.id}`);
 
-    // onValue returns the unsubscribe function directly
     _detailUnsub = onValue(itemRef, snap => {
         if (!snap.exists()) {
             window.navigateTo('home');
@@ -137,16 +146,34 @@ function openFoodDetail(item) {
         }
         const d = { id: item.id, ...snap.val() };
         window.currentDetailItem = d;
+        const user = auth.currentUser;
+        const myUid = user?.uid || '';
+        const myName = user?.displayName || user?.email?.split('@')[0] || 'User';
+
         const initial = d.userName?.charAt(0).toUpperCase() || 'U';
         const dietary = (d.dietaryTags || []).map(t => `<span class="diet-chip">${t}</span>`).join('');
 
+        // Check if claimer owes a pending rating
+        if (d.pendingRatingFor === myUid && d.userUid !== myUid) {
+            setTimeout(() => {
+                if (window.showRatingModal) {
+                    window.showRatingModal(d, myUid, myName, d.userUid);
+                }
+            }, 300);
+        }
+
         detailScreen.innerHTML = `
             <div class="detail-web-layout">
-                <!-- LEFT: back button + image -->
+                <!-- LEFT: back button + image + hamburger menu -->
                 <div class="detail-web-left">
-                    <button class="btn-back-detail-web" onclick="window.navigateTo('home')">
-                        <i class="fas fa-arrow-left"></i> Back to Feed
-                    </button>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <button class="btn-back-detail-web" onclick="window.navigateTo('home')">
+                            <i class="fas fa-arrow-left"></i> Back to Feed
+                        </button>
+                        <button id="btn-hamburger-menu" style="background:#F8F9FA;border:1px solid #E0E0E0;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#333;">
+                            ≡
+                        </button>
+                    </div>
                     <div class="detail-web-image-box">
                         ${d.imageUri
                 ? `<img src="${d.imageUri}" alt="${d.foodName}">`
@@ -158,9 +185,12 @@ function openFoodDetail(item) {
                         <div style="flex:1; min-width:0;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <strong style="font-size:15px;">${d.isAnonymous ? 'Anonymous' : (d.userName || 'User')}</strong>
-                                <span class="star-rating">★ 4.8</span>
+                                <span class="star-rating" id="donor-detail-rating">★ New</span>
                             </div>
-                            <span style="font-size:12px;color:#5F6368;">Neighborhood Hero</span>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+                                <span style="font-size:12px;color:#5F6368;" id="donor-detail-donations">Neighborhood Hero</span>
+                                <button id="btn-view-reviews" style="background:none;border:none;color:var(--primary, #22c55e);font-size:12px;font-weight:700;cursor:pointer;padding:0;">View Reviews →</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -215,6 +245,51 @@ function openFoodDetail(item) {
                 </div>
             </div>
         `;
+
+        // Hamburger click listener
+        const btnMenu = detailScreen.querySelector('#btn-hamburger-menu');
+        if (btnMenu) {
+            btnMenu.onclick = () => {
+                const donorUid = d.userUid;
+                const donorDisplay = d.isAnonymous ? "Anonymous" : (d.userName || "User");
+                const chatId = myUid < donorUid ? `${myUid}_${donorUid}` : `${donorUid}_${myUid}`;
+                if (window.showHamburgerMenu) {
+                    window.showHamburgerMenu(d, myUid, myName, donorUid, donorDisplay, chatId);
+                }
+            };
+        }
+
+        // View Reviews click listener
+        const btnReviews = detailScreen.querySelector('#btn-view-reviews');
+        if (btnReviews) {
+            btnReviews.onclick = () => {
+                if (window.showReviewsScreen) {
+                    window.showReviewsScreen(d.userUid, d.userName);
+                }
+            };
+        }
+
+        // Load live donor stats (average rating + donation count)
+        if (d.userUid) {
+            get(ref(rtdb, `user_stats/${d.userUid}`)).then(statsSnap => {
+                if (statsSnap.exists()) {
+                    const data = statsSnap.val();
+                    const avg = data.avgRating || 0;
+                    const count = data.totalRatings || 0;
+                    const donations = data.donations || 0;
+
+                    const ratingEl = document.getElementById('donor-detail-rating');
+                    const donEl = document.getElementById('donor-detail-donations');
+
+                    if (ratingEl) {
+                        ratingEl.textContent = count > 0 ? `★ ${avg}` : '★ New';
+                    }
+                    if (donEl) {
+                        donEl.textContent = donations > 0 ? `${donations} donation${donations !== 1 ? 's' : ''}` : 'Neighborhood Hero';
+                    }
+                }
+            }).catch(() => {});
+        }
 
         // Live countdown ticker
         if (window.detailTimer) clearInterval(window.detailTimer);

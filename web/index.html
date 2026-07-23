@@ -382,7 +382,44 @@
             <!-- 6. FOOD DETAIL SCREEN -->
             <div id="food-detail-screen" class="screen fragment-screen"></div>
 
-            <!-- 7. EDIT PROFILE MODAL -->
+            <!-- 7. REVIEWS SCREEN -->
+            <section id="reviews-screen" class="screen main-screen">
+                <div class="android-header" style="display:flex;align-items:center;gap:12px;">
+                    <button class="btn-back-detail-web" onclick="window.navigateTo('home')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h1 class="header-large" id="reviews-title">Reviews</h1>
+                        <p class="header-subtitle" id="reviews-summary-text">Loading...</p>
+                    </div>
+                </div>
+                <hr class="header-divider">
+                <div id="reviews-list-container" style="padding:16px 0;"></div>
+            </section>
+
+            <!-- 8. FOOD HISTORY SCREEN -->
+            <section id="history-screen" class="screen main-screen">
+                <div class="android-header" style="display:flex;align-items:center;gap:12px;">
+                    <button class="btn-back-detail-web" onclick="window.navigateTo('profile')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h1 class="header-large">Food History</h1>
+                        <p class="header-subtitle">Your donations & claims</p>
+                    </div>
+                </div>
+                <hr class="header-divider">
+
+                <!-- Tab Buttons -->
+                <div style="display:flex;gap:8px;margin:16px 0;background:#EFEFEF;padding:4px;border-radius:12px;">
+                    <button id="tab-btn-donated" class="active-tab" style="flex:1;padding:10px;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;">🎁 Donated</button>
+                    <button id="tab-btn-claimed" style="flex:1;padding:10px;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;background:none;color:#666;">🤚 Claimed</button>
+                </div>
+
+                <div id="history-list-container" style="padding-bottom:20px;"></div>
+            </section>
+
+            <!-- 9. EDIT PROFILE MODAL -->
             <div id="edit-profile-modal" class="modal-overlay hidden">
                 <div class="modal-content-android">
                     <h2>Edit Profile</h2>
@@ -414,6 +451,7 @@
         import { initMap } from './js/map.js';
         import { initProfile } from './js/profile.js';
         import { setupApp } from './js/app.js';
+        import './js/rating.js';
 
         setupApp();
         initAuthHandlers();
