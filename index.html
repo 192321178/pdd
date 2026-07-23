@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ShareBite — Share Food. Build Community.</title>
+    <meta name="description"
+        content="ShareBite — Real-time food sharing platform. Share surplus food, reduce waste, build community.">
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- ============================================================
+         AUTH WRAPPER
+    ============================================================ -->
+    <div id="auth-wrapper">
+        <div class="auth-box-android">
+            <!-- Brand Header -->
+            <div class="brand-logo-android">
+                <div class="green-box">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+                <h1>ShareBite</h1>
+                <p>Share food. Build community.</p>
+            </div>
+
+            <!-- LOGIN SCREEN -->
+            <div id="login-screen" class="auth-screen-android active">
+                <h2 class="auth-title">Welcome back</h2>
+                <p class="auth-subtitle">Login to continue sharing</p>
+
+                <form id="login-form" autocomplete="off">
+                    <div class="android-input-field">
+                        <input type="email" id="login-email" placeholder="Email address" autocomplete="off" required>
+                    </div>
+                    <div class="android-input-field" style="position: relative;">
+                        <input type="password" id="login-password" placeholder="Password" autocomplete="new-password"
+                            required style="padding-right: 40px;">
+                        <button type="button" class="btn-eye-toggle"
+                            onclick="window.togglePassword('login-password', this)"
+                            style="position: absolute; right: 10px; top: 12px; background: none; border: none; color: #999; cursor: pointer;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div style="text-align:right; margin-bottom:8px;">
+                        <a href="#" id="forgot-password-link" class="green-link">Forgot password?</a>
+                    </div>
+                    <div id="login-error" class="auth-error-msg"></div>
+                    <button type="submit" id="btn-login" class="btn-android-primary">LOGIN</button>
+                </form>
+
+                <div class="or-separator">or</div>
+
+                <!-- Google G Logo Button -->
+                <button id="btn-google-login" class="btn-google-android">
+                    <span class="google-g-logo">
+                        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                            <g fill="none" fill-rule="evenodd">
+                                <path
+                                    d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+                                    fill="#4285F4" />
+                                <path
+                                    d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+                                    fill="#34A853" />
+                                <path
+                                    d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+                                    fill="#FBBC05" />
+                                <path
+                                    d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"
+                                    fill="#EA4335" />
+                            </g>
+                        </svg>
+                    </span>
+                    Continue with Google
+                </button>
+
+                <p class="auth-footer-text">
+                    Don't have an account? <a href="#" id="go-signup" class="green-link">Sign up</a>
+                </p>
+            </div>
+
+            <!-- SIGNUP SCREEN -->
+            <div id="signup-screen" class="auth-screen-android">
+                <h2 class="auth-title">Create account</h2>
+                <p class="auth-subtitle">Join the community</p>
+
+                <form id="signup-form">
+                    <div class="android-input-field">
+                        <input type="text" id="signup-name" placeholder="Full name" required>
+                    </div>
+                    <div class="android-input-field">
+                        <input type="email" id="signup-email" placeholder="Email address" required>
+                    </div>
+                    <div class="android-input-field">
+                        <input type="text" id="signup-location" placeholder="City / Area (e.g. Coimbatore)">
+                    </div>
+                    <div class="android-input-field" style="position: relative;">
+                        <input type="password" id="signup-password" placeholder="Password (min 6 chars)"
+                            autocomplete="new-password" required style="padding-right: 40px;">
+                        <button type="button" class="btn-eye-toggle"
+                            onclick="window.togglePassword('signup-password', this)"
+                            style="position: absolute; right: 10px; top: 12px; background: none; border: none; color: #999; cursor: pointer;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="android-input-field">
+                        <input type="password" id="signup-confirm-password" placeholder="Confirm password" required>
+                    </div>
+                    <div id="signup-error" class="auth-error-msg"></div>
+                    <button type="submit" id="btn-signup" class="btn-android-primary">SIGN UP</button>
+                </form>
+
+                <p class="auth-footer-text">
+                    Already have an account? <a href="#" id="go-login" class="green-link">Login</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         APP WRAPPER (shown when authenticated)
+    ============================================================ -->
+    <div class="app-wrapper hidden">
+
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-exchange-alt"></i>
+                <span>ShareBite</span>
+            </div>
+            <nav class="nav-links">
+                <a href="#" class="nav-item active" data-screen="home">
+                    <i class="fas fa-home"></i><span>Home</span>
+                </a>
+                <a href="#" class="nav-item" data-screen="map">
+                    <i class="fas fa-map-marked-alt"></i><span>Map</span>
+                </a>
+                <a href="#" class="nav-item" data-screen="share">
+                    <i class="fas fa-plus-circle"></i><span>Share Food</span>
+                </a>
+                <a href="#" class="nav-item nav-messages" data-screen="message">
+                    <i class="fas fa-comment"></i>
+                    <span>Messages</span>
+                    <span id="msg-tab-badge" class="nav-badge" style="display:none;">0</span>
+                </a>
+                <a href="#" class="nav-item" data-screen="profile">
+                    <i class="fas fa-user-circle"></i><span>Profile</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- 1. HOME SCREEN -->
+            <section id="home-screen" class="screen main-screen active">
+                <div class="android-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <button id="home-hamburger-btn" style="background:#F8F9FA;border:1px solid #E0E0E0;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#333;margin-top:2px;">
+                            ≡
+                        </button>
+                        <div>
+                            <p class="header-small">FOOD NEAR YOU</p>
+                            <h1 class="header-large">ShareBite</h1>
+                        </div>
+                    </div>
+                    <button id="bell-btn" class="bell-btn" title="Messages">
+                        <i class="fas fa-bell"></i>
+                        <span id="bell-badge" class="bell-badge" style="display:none;">0</span>
+                    </button>
+                </div>
+
+                <div class="content-body" style="padding-bottom:20px;">
+                    <div class="search-container" style="margin-bottom:16px;">
+                        <div class="search-bar">
+                            <i class="fa fa-search search-icon"></i>
+                            <input type="text" id="search-input" placeholder="Search food listings...">
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <div id="filter-chips" style="display:flex;gap:8px;overflow-x:auto;">
+                            <button class="chip active" data-cat="all">All</button>
+                            <button class="chip" data-cat="Cooked Meal">Cooked</button>
+                            <button class="chip" data-cat="Fresh Produce">Produce</button>
+                            <button class="chip" data-cat="Packaged">Packaged</button>
+                            <button class="chip" data-cat="Bakery">Bakery</button>
+                        </div>
+                        <span id="listing-count"
+                            style="font-size:13px;color:var(--text-hint);white-space:nowrap;padding-left:8px;"></span>
+                    </div>
+
+                    <div id="feed-grid" class="feed-grid"></div>
+                </div>
+            </section>
+
+            <!-- 2. MAP SCREEN -->
+            <section id="map-screen" class="screen main-screen">
+                <div class="android-header">
+                    <p class="header-small">NEARBY</p>
+                    <h1 class="header-large">Food Donor Map</h1>
+                </div>
+                <div id="map"
+                    style="height:calc(100vh - 120px);border-radius:var(--radius-lg);box-shadow:var(--shadow);border:1px solid var(--border);">
+                </div>
+            </section>
+
+            <!-- 3. SHARE FOOD SCREEN -->
+            <section id="share-screen" class="screen main-screen">
+                <div class="android-header-row">
+                    <h1 class="header-large">Share Food</h1>
+                    <button id="btn-submit-listing" class="btn btn-share-header">SHARE</button>
+                </div>
+
+                <div class="share-form-container">
+                    <div id="photo-upload-box" class="photo-placeholder">
+                        <input type="file" id="photo-input" accept="image/*" style="display:none">
+                        <div class="camera-icon-circle">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                <circle cx="12" cy="13" r="4" />
+                            </svg>
+                        </div>
+                        <span class="upload-text">Add a photo</span>
+                        <p class="upload-hint">Photos get 3x more claims</p>
+                        <img id="photo-preview" class="hidden" alt="Food preview">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Food Name *</label>
+                        <input type="text" id="share-food-name" placeholder="e.g. Homemade Biryani">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Category</label>
+                        <div id="category-chips-share" class="category-grid">
+                            <button class="cat-chip active" data-cat="Cooked Meal">🍲 Cooked Meal</button>
+                            <button class="cat-chip" data-cat="Fresh Produce">🥬 Fresh Produce</button>
+                            <button class="cat-chip" data-cat="Packaged">📦 Packaged</button>
+                            <button class="cat-chip" data-cat="Bakery">🥐 Bakery</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Quantity *</label>
+                        <input type="text" id="share-quantity" placeholder="e.g. 2 portions, 1kg">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Pickup Location *</label>
+                        <input type="text" id="share-location" placeholder="e.g. 123 Mission St, Coimbatore">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Available Until *</label>
+                        <div class="time-inputs">
+                            <input type="number" id="share-hours" placeholder="Hours" min="0" max="23" value="0">
+                            <input type="number" id="share-minutes" placeholder="Minutes" min="0" max="59" value="20">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Dietary Tags</label>
+                        <div class="dietary-tags-row">
+                            <button class="diet-tag" data-tag="dairy-free">Dairy-free</button>
+                            <button class="diet-tag" data-tag="vegetarian">Vegetarian</button>
+                            <button class="diet-tag" data-tag="halal">Halal</button>
+                            <button class="diet-tag" data-tag="vegan">Vegan</button>
+                            <button class="diet-tag" data-tag="gluten-free">Gluten-free</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="share-description" rows="3"
+                            placeholder="Any special notes about the food..."></textarea>
+                    </div>
+
+                    <div class="form-group anon-toggle-row">
+                        <div>
+                            <span style="font-size:20px;">🫣</span>
+                            <div>
+                                <strong>Anonymous donation</strong>
+                                <p style="font-size:12px;color:#999;margin:0;">Hide your name from the listing</p>
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="share-anonymous">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. MESSAGE SCREEN -->
+            <section id="message-screen" class="screen main-screen">
+                <div class="android-header">
+                    <h1 class="header-large">Messages</h1>
+                    <p class="header-subtitle">Your food conversations</p>
+                </div>
+                <hr class="header-divider">
+                <div id="chat-list" class="chat-list"></div>
+
+                <div id="chat-detail-view" class="chat-detail-view hidden">
+                    <div class="chat-detail-header">
+                        <button onclick="window.backToInbox()" class="btn-back-chat">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="chat-title-info">
+                            <h3>Chat</h3>
+                            <p>Regarding: Food</p>
+                        </div>
+                    </div>
+                    <div id="chat-messages" class="chat-messages-list"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input-field" placeholder="Type a message...">
+                        <button onclick="window.sendMessage()" class="btn-send">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. PROFILE SCREEN -->
+            <section id="profile-screen" class="screen main-screen">
+                <div class="profile-header-row">
+                    <h1 class="header-large">Profile</h1>
+                    <button id="logout-btn" class="btn-logout-text">Logout →</button>
+                </div>
+
+                <div class="profile-card-top">
+                    <div class="profile-avatar-circle">U</div>
+                    <div class="profile-info-main">
+                        <h2 id="profile-display-name">Loading...</h2>
+                        <p class="profile-location-text" id="profile-location-text">📍 Coimbatore</p>
+                        <button class="btn btn-edit-profile" id="btn-edit-profile">
+                            <i class="fas fa-cog"></i> Edit Profile
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-grid-android">
+                    <div class="stat-item-android">
+                        <span class="stat-emoji">🎁</span>
+                        <span class="stat-value" id="stat-donations">0</span>
+                        <span class="stat-label">Donations</span>
+                    </div>
+                    <div class="stat-item-android">
+                        <span class="stat-emoji">🤚</span>
+                        <span class="stat-value" id="stat-claims">0</span>
+                        <span class="stat-label">Claims</span>
+                    </div>
+                    <div class="stat-item-android">
+                        <span class="stat-emoji">🌿</span>
+                        <span class="stat-value" id="stat-kg">0.0</span>
+                        <span class="stat-label">Food (kg)</span>
+                    </div>
+                    <div class="stat-item-android">
+                        <span class="stat-emoji">☁️</span>
+                        <span class="stat-value" id="stat-co2">0.0</span>
+                        <span class="stat-label">CO₂ (kg)</span>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>Badges</h3>
+                    <div id="badges-container">
+                        <div class="badge-lock"><i class="fas fa-lock"></i> <span>No badges yet</span></div>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>🏆 Neighborhood Leaderboard</h3>
+                    <div id="leaderboard-list"></div>
+                </div>
+            </section>
+
+            <!-- 6. FOOD DETAIL SCREEN -->
+            <div id="food-detail-screen" class="screen fragment-screen"></div>
+
+            <!-- 7. REVIEWS SCREEN -->
+            <section id="reviews-screen" class="screen main-screen">
+                <div class="android-header" style="display:flex;align-items:center;gap:12px;">
+                    <button class="btn-back-detail-web" onclick="window.navigateTo('home')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h1 class="header-large" id="reviews-title">Reviews</h1>
+                        <p class="header-subtitle" id="reviews-summary-text">Loading...</p>
+                    </div>
+                </div>
+                <hr class="header-divider">
+                <div id="reviews-list-container" style="padding:16px 0;"></div>
+            </section>
+
+            <!-- 8. FOOD HISTORY SCREEN -->
+            <section id="history-screen" class="screen main-screen">
+                <div class="android-header" style="display:flex;align-items:center;gap:12px;">
+                    <button class="btn-back-detail-web" onclick="window.navigateTo('profile')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h1 class="header-large">Food History</h1>
+                        <p class="header-subtitle">Your donations & claims</p>
+                    </div>
+                </div>
+                <hr class="header-divider">
+
+                <!-- Tab Buttons -->
+                <div style="display:flex;gap:8px;margin:16px 0;background:#EFEFEF;padding:4px;border-radius:12px;">
+                    <button id="tab-btn-donated" class="active-tab" style="flex:1;padding:10px;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;">🎁 Donated</button>
+                    <button id="tab-btn-claimed" style="flex:1;padding:10px;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;background:none;color:#666;">🤚 Claimed</button>
+                </div>
+
+                <div id="history-list-container" style="padding-bottom:20px;"></div>
+            </section>
+
+            <!-- 9. EDIT PROFILE MODAL -->
+            <div id="edit-profile-modal" class="modal-overlay hidden">
+                <div class="modal-content-android">
+                    <h2>Edit Profile</h2>
+                    <div class="android-input-field">
+                        <label>Name</label>
+                        <input type="text" id="edit-name" placeholder="Your name">
+                    </div>
+                    <div class="android-input-field">
+                        <label>Location</label>
+                        <input type="text" id="edit-location" placeholder="City / Area">
+                    </div>
+                    <div class="modal-actions-android">
+                        <button id="btn-cancel-edit" class="btn-text">CANCEL</button>
+                        <button id="btn-save-edit" class="btn-text green">SAVE</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+    </div>
+
+    <!-- ES Module Entry Point -->
+    <script type="module">
+        import { initAuthHandlers } from './js/auth.js';
+        import { initFeed } from './js/feed.js';
+        import { initShare } from './js/share.js';
+        import { initChat } from './js/chat.js';
+        import { initMap } from './js/map.js';
+        import { initProfile } from './js/profile.js';
+        import { setupApp } from './js/app.js';
+        import './js/rating.js';
+
+        setupApp();
+        initAuthHandlers();
+        initFeed();
+        initShare();
+        initChat();
+        initMap();
+        initProfile();
+    </script>
+
+</body>
+
+</html>
