@@ -2,6 +2,8 @@ package com.sharebite.auth
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.method.HideReturnsTransformationMethod
+import android.text.method.PasswordTransformationMethod
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -53,6 +55,20 @@ class LoginActivity : AppCompatActivity() {
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        // ✅ Fix: Eye icon toggle for password visibility
+        var isPasswordVisible = false
+        binding.ivTogglePassword?.setOnClickListener {
+            isPasswordVisible = !isPasswordVisible
+            if (isPasswordVisible) {
+                binding.etPassword.transformationMethod = HideReturnsTransformationMethod.getInstance()
+                binding.ivTogglePassword.setImageResource(android.R.drawable.ic_menu_view)
+            } else {
+                binding.etPassword.transformationMethod = PasswordTransformationMethod.getInstance()
+                binding.ivTogglePassword.setImageResource(android.R.drawable.ic_secure)
+            }
+            binding.etPassword.setSelection(binding.etPassword.text?.length ?: 0)
+        }
 
         // Login button
         binding.btnSignIn.setOnClickListener {

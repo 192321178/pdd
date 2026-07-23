@@ -10,7 +10,6 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -164,16 +163,9 @@ class FeedFragment : Fragment() {
                 tvCardClaimed.visibility = View.GONE
             }
 
-            // ✅ Card click — claimed ஆனா block பண்ணு
+            // ✅ Fix: always allow clicking — FoodDetailActivity handles button state
+            // Claimed food should still be openable so claimer can message donor
             card.setOnClickListener {
-                if (item.isClaimed) {
-                    Toast.makeText(
-                        requireContext(),
-                        "This food has already been claimed!",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    return@setOnClickListener
-                }
                 val intent = Intent(requireContext(), FoodDetailActivity::class.java)
                 intent.putExtra("item_id", item.id)
                 startActivity(intent)

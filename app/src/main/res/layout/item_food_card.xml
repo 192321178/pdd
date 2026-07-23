@@ -4,10 +4,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="24dp"
-    android:layout_marginEnd="24dp"
-    android:layout_marginBottom="24dp"
-    app:cardCornerRadius="20dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="16dp"
+    app:cardCornerRadius="24dp"
     app:cardElevation="2dp"
     app:cardBackgroundColor="#FFFFFF">
 
@@ -16,172 +16,140 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Image Section -->
+        <!-- Top Image Section -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="200dp">
+            android:layout_height="220dp">
 
-            <!-- Default emoji background -->
-            <LinearLayout
-                android:id="@+id/layoutNoImage"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:background="#FAFAFA">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🥗"
-                    android:textSize="56sp"/>
-
-            </LinearLayout>
-
-            <!-- User uploaded image -->
             <ImageView
                 android:id="@+id/imgFoodCard"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
-                android:visibility="gone"/>
+                android:src="@android:drawable/ic_menu_gallery"/>
 
-            <!-- Status Badges Overlay -->
             <LinearLayout
+                android:id="@+id/layoutNoImage"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="12dp"
-                android:orientation="horizontal"
-                android:gravity="top">
-
+                android:layout_height="match_parent"
+                android:background="#F5F5F5"
+                android:gravity="center"
+                android:visibility="gone">
                 <TextView
-                    android:id="@+id/tvCardCategory"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Home Cooked"
-                    android:textSize="10sp"
-                    android:textColor="#FFFFFF"
-                    android:textStyle="bold"
-                    android:background="@drawable/bg_category_label"
-                    android:backgroundTint="#212121"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:paddingTop="5dp"
-                    android:paddingBottom="5dp"/>
-
+                    android:text="🍲"
+                    android:textSize="48sp"/>
             </LinearLayout>
 
-            <!-- Fresh Indicator Overlay -->
-            <androidx.cardview.widget.CardView
+            <!-- Fresh Badge -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_margin="12dp"
+                android:background="@drawable/bg_claimed_badge"
+                android:backgroundTint="#2D3436"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:gravity="center_vertical">
+                <View
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="@drawable/bg_dot_red"
+                    android:layout_marginEnd="6dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fresh!"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Category Tag -->
+            <TextView
+                android:id="@+id/tvCardCategory"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|start"
                 android:layout_margin="12dp"
-                app:cardCornerRadius="8dp"
-                app:cardBackgroundColor="#FFFFFF"
-                app:cardElevation="2dp">
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:paddingTop="5dp"
-                    android:paddingBottom="5dp">
-                    <View
-                        android:layout_width="6dp"
-                        android:layout_height="6dp"
-                        android:background="@drawable/bg_dot_red"
-                        android:backgroundTint="#00C853"
-                        android:layout_marginEnd="6dp"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="FRESH"
-                        android:textSize="9sp"
-                        android:textColor="#00C853"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.05"/>
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+                android:text="Cooked Meal"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_claimed_badge"
+                android:backgroundTint="#2D3436"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"/>
 
-            <!-- Claimed Overlay -->
+            <!-- Claimed ✓ semi-transparent green banner at bottom of image -->
             <TextView
                 android:id="@+id/tvCardClaimed"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="CLAIMED"
-                android:textSize="22sp"
-                android:textStyle="bold"
+                android:layout_height="40dp"
+                android:layout_gravity="bottom"
+                android:background="#CC00C853"
+                android:text="✓ Claimed"
                 android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"
                 android:gravity="center"
-                android:background="#99000000"
+                android:letterSpacing="0.05"
                 android:visibility="gone"/>
 
         </FrameLayout>
 
-        <!-- Card Details -->
+        <!-- Content Section -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="20dp">
 
-            <RelativeLayout
+            <TextView
+                android:id="@+id/tvCardFoodName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Curd rice"
+                android:textColor="#2D3436"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:id="@+id/tvCardQuantity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2 plate"
+                android:textColor="#636E72"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:id="@+id/tvCardTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="7m left"
+                android:textColor="#FF7675"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:id="@+id/tvCardDesc"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="6dp">
+                android:text="Tsty"
+                android:textColor="#636E72"
+                android:textSize="14sp"
+                android:layout_marginBottom="16dp"/>
 
-                <TextView
-                    android:id="@+id/tvCardFoodName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Organic Tomato Rice"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="#212121"
-                    android:fontFamily="sans-serif-medium"/>
-
-                <TextView
-                    android:id="@+id/tvRating"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:text="★ 4.9"
-                    android:textColor="#FFC107"
-                    android:textSize="12sp"
-                    android:textStyle="bold"/>
-
-            </RelativeLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
-
-                <TextView
-                    android:id="@+id/tvCardQuantity"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="3 servings"
-                    android:textSize="13sp"
-                    android:textColor="#757575"
-                    android:layout_marginEnd="16dp"/>
-
-                <TextView
-                    android:id="@+id/tvCardTimer"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Expires in 2h"
-                    android:textSize="12sp"
-                    android:textColor="#D32F2F"
-                    android:textStyle="bold"/>
-
-            </LinearLayout>
-
-            <!-- User Info & Action -->
+            <!-- User Info Bar -->
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -196,37 +164,35 @@
 
                     <TextView
                         android:id="@+id/tvAvatarInit"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:text="K"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:textColor="#FFFFFF"
-                        android:gravity="center"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
                         android:background="@drawable/bg_avatar"
-                        android:backgroundTint="#00C853"
-                        android:layout_marginEnd="8dp"/>
+                        android:backgroundTint="#2ECC71"
+                        android:text="Y"
+                        android:textColor="#FFFFFF"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:layout_marginEnd="12dp"/>
 
                     <TextView
                         android:id="@+id/tvCardUserName"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Karthik"
-                        android:textSize="13sp"
-                        android:textColor="#424242"
-                        android:fontFamily="sans-serif-medium"/>
-
+                        android:text="Santhosh"
+                        android:textColor="#2D3436"
+                        android:textStyle="bold"
+                        android:textSize="14sp"/>
                 </LinearLayout>
 
                 <TextView
+                    android:id="@+id/tvRating"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
-                    android:text="DETAILS"
-                    android:textSize="12sp"
+                    android:text="★ 5.0"
+                    android:textColor="#FDCB6E"
                     android:textStyle="bold"
-                    android:textColor="#00C853"
-                    android:letterSpacing="0.05"/>
+                    android:textSize="14sp"/>
 
             </RelativeLayout>
 

@@ -19,7 +19,13 @@ data class FoodItem(
     val imageUri: String? = null,
     val expiryTimeMillis: Long = 0L,
     val isClaimed: Boolean = false,
-    val claimedByUid: String = ""
+    val claimedByUid: String = "",
+    val claimOtp: Int = 0,              // ✅ OTP stored for online verification
+    val claimerName: String = "",       // ✅ claimer's display name
+    val isVerified: Boolean = false,    // ✅ true after donor verifies OTP
+    val pendingRatingFor: String = "",  // ✅ uid of claimer who needs to rate
+    val isAnonymous: Boolean = false,
+    val dietaryTags: List<String> = emptyList()
 )
 
 object FoodDataStore {
@@ -82,11 +88,15 @@ object FoodDataStore {
         }
     }
 
-    fun updateClaimed(itemId: String) {
+    fun updateClaimed(itemId: String, claimedByUid: String = "") {
+        // ✅ Fix: update both isClaimed and claimedByUid in Firebase and memory
         db.child(itemId).child("isClaimed").setValue(true)
+        if (claimedByUid.isNotEmpty()) {
+            db.child(itemId).child("claimedByUid").setValue(claimedByUid)
+        }
         val index = items.indexOfFirst { it.id == itemId }
         if (index != -1) {
-            items[index] = items[index].copy(isClaimed = true)
+            items[index] = items[index].copy(isClaimed = true, claimedByUid = claimedByUid)
         }
     }
 

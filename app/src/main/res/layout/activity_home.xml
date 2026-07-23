@@ -18,23 +18,25 @@
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="64dp"
         android:layout_gravity="bottom"
         android:background="@color/white"
-        android:elevation="8dp"
+        app:elevation="12dp"
         app:menu="@menu/bottom_nav_menu"
         app:itemIconTint="@color/gray_text"
-        app:itemTextColor="@color/gray_text"/>
+        app:itemTextColor="@color/gray_text"
+        app:labelVisibilityMode="labeled"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabShare"
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="28dp"
         android:src="@android:drawable/ic_input_add"
         app:backgroundTint="@color/green_primary"
         app:tint="@color/white"
-        app:elevation="10dp"/>
+        app:elevation="14dp"
+        app:borderWidth="0dp"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

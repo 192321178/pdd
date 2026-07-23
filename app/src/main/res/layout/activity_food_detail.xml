@@ -78,6 +78,27 @@
 
                 </androidx.cardview.widget.CardView>
 
+                <!-- Hamburger Menu Button (≡) -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/btnMenu"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    app:cardCornerRadius="20dp"
+                    app:cardBackgroundColor="#1E293B"
+                    app:cardElevation="4dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:layout_marginBottom="16dp">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:src="@android:drawable/ic_menu_more"
+                        app:tint="#F8FAFC"/>
+
+                </androidx.cardview.widget.CardView>
+
                 <!-- Countdown Timer -->
                 <TextView
                     android:id="@+id/tvCountdown"
@@ -290,6 +311,7 @@
                                     android:textColor="#F8FAFC"/>
 
                                 <TextView
+                                    android:id="@+id/tvDonorRating"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="★ 4.9 · 32 donations"
@@ -303,6 +325,20 @@
 
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
+
+                <!-- View Reviews Button -->
+                <TextView
+                    android:id="@+id/tvViewReviews"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="⭐ View Reviews"
+                    android:gravity="center"
+                    android:textSize="14sp"
+                    android:textColor="#22c55e"
+                    android:textStyle="bold"
+                    android:background="#1A2233"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="8dp"/>
 
             </LinearLayout>
 

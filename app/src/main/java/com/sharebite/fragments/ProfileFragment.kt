@@ -47,7 +47,7 @@ class ProfileFragment : Fragment() {
         val tvAvatar   = view.findViewById<TextView>(R.id.tvProfileAvatar)
         val tvLocation = view.findViewById<TextView>(R.id.tvProfileLocation)
 
-        // ✅ User data இல்லன்னா auto create பண்ணு
+        // Auto-create user record if not exists (Google sign-in users may not have a record)
         usersDb.child(currentUser.uid).get().addOnSuccessListener { snapshot ->
             if (!snapshot.exists()) {
                 val name = currentUser.displayName
@@ -62,7 +62,7 @@ class ProfileFragment : Fragment() {
             }
         }
 
-        // Profile data load
+        // Profile display — real-time listener for name/location UI only
         usersDb.child(currentUser.uid).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val name = snapshot.child("name").getValue(String::class.java)
@@ -75,24 +75,39 @@ class ProfileFragment : Fragment() {
                 if (!isAdded) return
                 tvName.text     = name
                 tvAvatar.text   = name.firstOrNull()?.uppercase() ?: "U"
-                tvLocation.text = location
-
-                loadStats(view, currentUser.uid, name)
+                tvLocation.text = "📍 $location"
             }
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        view.findViewById<TextView>(R.id.btnLogout).setOnClickListener {
-            auth.signOut()
-            startActivity(Intent(requireContext(), LoginActivity::class.java))
-            requireActivity().finish()
-        }
-
-        view.findViewById<TextView>(R.id.btnEditProfile).setOnClickListener {
-            showEditProfileDialog(tvName, tvLocation)
-        }
-
+        // ✅ Fix: call loadStats and loadLeaderboard directly with uid — NEVER gate on
+        // user record existing. Google sign-in users have no /users/{uid} record initially
+        // so the previous usersDb.get() approach returned empty and stats showed 0.
+        // uid matching alone is sufficient — all food items store userUid correctly.
+        val myName = currentUser.displayName
+            ?: currentUser.email?.substringBefore("@")
+            ?: "User"
+        loadStats(view, currentUser.uid, myName)
         loadLeaderboard(view)
+
+        // ✅ Logout — now a LinearLayout with "Logout →" text
+        view.findViewById<LinearLayout>(R.id.btnLogout).setOnClickListener {
+            AlertDialog.Builder(requireContext())
+                .setTitle("Logout")
+                .setMessage("Are you sure you want to logout?")
+                .setPositiveButton("Logout") { _, _ ->
+                    auth.signOut()
+                    startActivity(Intent(requireContext(), LoginActivity::class.java))
+                    requireActivity().finish()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+
+        view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnEditProfile)
+            .setOnClickListener {
+                showEditProfileDialog(tvName, tvLocation)
+            }
     }
 
     private fun showEditProfileDialog(tvName: TextView, tvLocation: TextView) {
@@ -103,6 +118,8 @@ class ProfileFragment : Fragment() {
             setPadding(60, 40, 60, 20)
         }
 
+        val currentLocation = tvLocation.text.toString().removePrefix("📍 ")
+
         val etName = EditText(requireContext()).apply {
             hint = "Your name"
             setText(tvName.text)
@@ -110,7 +127,7 @@ class ProfileFragment : Fragment() {
         }
         val etLocation = EditText(requireContext()).apply {
             hint = "Your location"
-            setText(tvLocation.text)
+            setText(currentLocation)
             setPadding(20, 20, 20, 20)
         }
 
@@ -161,27 +178,20 @@ class ProfileFragment : Fragment() {
         val tvFoodKg    = view.findViewById<TextView>(R.id.tvFoodKg)
         val tvCo2       = view.findViewById<TextView>(R.id.tvCo2Kg)
 
-        db.addValueEventListener(object : ValueEventListener {
+        // ✅ Read from permanent /user_stats/{uid} — never 0 even after food expires/deleted
+        // Stats are written at time of share (donations++) and claim (claims++)
+        val statsRef = FirebaseDatabase
+            .getInstance("https://sharebite-7143d-default-rtdb.firebaseio.com")
+            .getReference("user_stats")
+            .child(uid)
+
+        statsRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!isAdded) return
-
-                var donations = 0
-                var claims    = 0
-
-                for (child in snapshot.children) {
-                    val item = child.getValue(FoodItem::class.java) ?: continue
-
-                    // UID match (new data) + name match (old data) — இரண்டும் check பண்ணு
-                    val isDonor = item.userUid == uid ||
-                            (item.userUid.isEmpty() && item.userName == userName)
-                    val isClaimer = item.claimedByUid == uid
-
-                    if (isDonor)   donations++
-                    if (isClaimer) claims++
-                }
-
-                val foodKg = donations * 0.9
-                val co2Kg  = donations * 2.5
+                val donations = snapshot.child("donations").getValue(Int::class.java) ?: 0
+                val claims    = snapshot.child("claims").getValue(Int::class.java) ?: 0
+                val foodKg    = donations * 0.9
+                val co2Kg     = donations * 2.5
 
                 tvDonations.text = donations.toString()
                 tvClaims.text    = claims.toString()
@@ -232,78 +242,78 @@ class ProfileFragment : Fragment() {
     private fun loadLeaderboard(view: View) {
         if (!isAdded) return
         val layoutLeaderboard = view.findViewById<LinearLayout>(R.id.layoutLeaderboard)
-        val userDonations = mutableMapOf<String, Pair<String, Int>>()
 
-        db.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (!isAdded) return
-                userDonations.clear()
+        // ✅ Read from permanent /user_stats — always accurate even after food expires
+        val leaderboardRef = FirebaseDatabase
+            .getInstance("https://sharebite-7143d-default-rtdb.firebaseio.com")
+            .getReference("user_stats")
 
-                for (child in snapshot.children) {
-                    val item = child.getValue(FoodItem::class.java) ?: continue
-                    if (item.userUid.isEmpty()) {
-                        val name = item.userName.ifEmpty { "Anonymous" }
-                        val existing = userDonations[name] ?: Pair(name, 0)
-                        userDonations[name] = Pair(name, existing.second + 1)
-                    } else {
-                        val existing = userDonations[item.userUid] ?: Pair(item.userName, 0)
-                        userDonations[item.userUid] = Pair(
-                            item.userName.ifEmpty { "User" }, existing.second + 1
-                        )
-                    }
+        leaderboardRef.get().addOnSuccessListener { snapshot ->
+            if (!isAdded) return@addOnSuccessListener
+
+            data class LeaderEntry(val name: String, val donations: Int)
+            val entries = mutableListOf<LeaderEntry>()
+
+            for (child in snapshot.children) {
+                val name      = child.child("userName").getValue(String::class.java) ?: "User"
+                val donations = child.child("donations").getValue(Int::class.java) ?: 0
+                if (donations > 0) entries.add(LeaderEntry(name, donations))
+            }
+
+            val sorted = entries.sortedByDescending { it.donations }.take(5)
+            layoutLeaderboard.removeAllViews()
+
+            if (sorted.isEmpty()) {
+                layoutLeaderboard.addView(TextView(requireContext()).apply {
+                    text = "No donations yet. Be the first! 🌟"
+                    textSize = 13f
+                    setTextColor(resources.getColor(R.color.green_primary, null))
+                    gravity = android.view.Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { topMargin = 16 }
+                })
+                return@addOnSuccessListener
+            }
+
+            val medals = listOf("🥇", "🥈", "🥉", "4️⃣", "5️⃣")
+            sorted.forEachIndexed { index, entry ->
+                val row = LinearLayout(requireContext()).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity     = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(0, 14, 0, 14)
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
                 }
+                row.addView(TextView(requireContext()).apply {
+                    text = medals.getOrElse(index) { "▪" }
+                    textSize = 20f
+                    layoutParams = LinearLayout.LayoutParams(48, LinearLayout.LayoutParams.WRAP_CONTENT)
+                })
+                row.addView(TextView(requireContext()).apply {
+                    text = entry.name
+                    textSize = 15f
+                    setTextColor(resources.getColor(R.color.black, null))
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                })
+                row.addView(TextView(requireContext()).apply {
+                    val foodKg = entry.donations * 0.9
+                    text = "${entry.donations} donations · ${String.format("%.1f", foodKg)}kg"
+                    textSize = 12f
+                    setTextColor(resources.getColor(R.color.green_primary, null))
+                })
+                layoutLeaderboard.addView(row)
 
-                val sorted = userDonations.values.sortedByDescending { it.second }.take(5)
-                layoutLeaderboard.removeAllViews()
-                val medals = listOf("🥇", "🥈", "🥉", "4️⃣", "5️⃣")
-
-                sorted.forEachIndexed { index, (name, count) ->
-                    val row = LinearLayout(requireContext()).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        gravity     = android.view.Gravity.CENTER_VERTICAL
-                        setPadding(0, 14, 0, 14)
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT
-                        )
-                    }
-                    row.addView(TextView(requireContext()).apply {
-                        text = medals.getOrElse(index) { "▪" }
-                        textSize = 20f
-                        layoutParams = LinearLayout.LayoutParams(
-                            48, LinearLayout.LayoutParams.WRAP_CONTENT
-                        )
+                if (index < sorted.size - 1) {
+                    layoutLeaderboard.addView(View(requireContext()).apply {
+                        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
+                        setBackgroundColor(resources.getColor(android.R.color.darker_gray, null))
+                        alpha = 0.2f
                     })
-                    row.addView(TextView(requireContext()).apply {
-                        text = name
-                        textSize = 15f
-                        setTextColor(resources.getColor(R.color.black, null))
-                        layoutParams = LinearLayout.LayoutParams(
-                            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-                        )
-                    })
-                    row.addView(TextView(requireContext()).apply {
-                        val foodKg = count * 0.9
-                        text = "$count donations · ${String.format("%.1f", foodKg)}kg"
-                        textSize = 12f
-                        setTextColor(resources.getColor(R.color.green_primary, null))
-                    })
-                    layoutLeaderboard.addView(row)
-
-                    if (index < sorted.size - 1) {
-                        layoutLeaderboard.addView(View(requireContext()).apply {
-                            layoutParams = LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT, 1
-                            )
-                            setBackgroundColor(
-                                resources.getColor(android.R.color.darker_gray, null)
-                            )
-                            alpha = 0.2f
-                        })
-                    }
                 }
             }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        }
     }
 }

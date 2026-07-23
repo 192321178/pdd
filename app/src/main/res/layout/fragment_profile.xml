@@ -21,22 +21,42 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="My Profile"
+                android:text="Profile"
                 android:textSize="32sp"
+                android:textStyle="bold"
                 android:fontFamily="sans-serif-medium"
                 android:textColor="#212121"/>
 
-            <TextView
+            <!-- Logout text button with arrow, exactly like image 7 -->
+            <LinearLayout
                 android:id="@+id/btnLogout"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:text="⇥"
-                android:textSize="22sp"
-                android:textColor="#D32F2F"
-                android:gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
-                android:background="@drawable/bg_input_field"
-                android:backgroundTint="#FAFAFA"/>
+                android:layout_centerVertical="true"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Logout"
+                    android:textSize="14sp"
+                    android:textColor="#D32F2F"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" →"
+                    android:textSize="16sp"
+                    android:textColor="#D32F2F"
+                    android:textStyle="bold"/>
+
+            </LinearLayout>
 
         </RelativeLayout>
 
@@ -87,7 +107,7 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="EDIT PROFILE"
+                android:text="⚙ Edit Profile"
                 android:textSize="12sp"
                 android:textColor="#00C853"
                 app:strokeColor="#00C853"
@@ -96,18 +116,7 @@
 
         </LinearLayout>
 
-        <!-- Impact Stats Grid -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="MY IMPACT"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#00C853"
-            android:letterSpacing="0.05"
-            android:layout_marginStart="24dp"
-            android:layout_marginBottom="16dp"/>
-
+        <!-- Stats Grid -->
         <GridLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -128,19 +137,19 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp"
-                    android:gravity="start">
+                    android:padding="20dp"
+                    android:gravity="center">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🎁"
-                        android:textSize="20sp"/>
+                        android:textSize="28sp"/>
                     <TextView
                         android:id="@+id/tvDonationsCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="12"
-                        android:textSize="24sp"
+                        android:text="1"
+                        android:textSize="28sp"
                         android:textStyle="bold"
                         android:textColor="#212121"
                         android:layout_marginTop="8dp"/>
@@ -148,7 +157,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Donations"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:textColor="#757575"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -165,19 +174,19 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp"
-                    android:gravity="start">
+                    android:padding="20dp"
+                    android:gravity="center">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🥗"
-                        android:textSize="20sp"/>
+                        android:text="🤚"
+                        android:textSize="28sp"/>
                     <TextView
                         android:id="@+id/tvClaimsCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="5"
-                        android:textSize="24sp"
+                        android:text="0"
+                        android:textSize="28sp"
                         android:textStyle="bold"
                         android:textColor="#212121"
                         android:layout_marginTop="8dp"/>
@@ -185,7 +194,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Claims"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:textColor="#757575"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -202,27 +211,27 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp"
-                    android:gravity="start">
+                    android:padding="20dp"
+                    android:gravity="center">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🌿"
-                        android:textSize="20sp"/>
+                        android:textSize="28sp"/>
                     <TextView
                         android:id="@+id/tvFoodKg"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="8.5"
-                        android:textSize="24sp"
+                        android:text="0.9"
+                        android:textSize="28sp"
                         android:textStyle="bold"
                         android:textColor="#212121"
                         android:layout_marginTop="8dp"/>
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="kg Saved"
-                        android:textSize="12sp"
+                        android:text="Food (kg)"
+                        android:textSize="13sp"
                         android:textColor="#757575"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -239,42 +248,41 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp"
-                    android:gravity="start">
+                    android:padding="20dp"
+                    android:gravity="center">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="☁️"
-                        android:textSize="20sp"/>
+                        android:textSize="28sp"/>
                     <TextView
                         android:id="@+id/tvCo2Kg"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="14.2"
-                        android:textSize="24sp"
+                        android:text="2.5"
+                        android:textSize="28sp"
                         android:textStyle="bold"
                         android:textColor="#212121"
                         android:layout_marginTop="8dp"/>
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="CO₂ Reduced"
-                        android:textSize="12sp"
+                        android:text="CO₂ (kg)"
+                        android:textSize="13sp"
                         android:textColor="#757575"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
         </GridLayout>
 
-        <!-- Achievements -->
+        <!-- Badges -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ACHIEVEMENTS"
-            android:textSize="12sp"
+            android:text="Badges"
+            android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#00C853"
-            android:letterSpacing="0.05"
+            android:textColor="#212121"
             android:layout_marginStart="24dp"
             android:layout_marginBottom="16dp"/>
 
@@ -303,8 +311,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Neighborhood Ranking"
-                android:textSize="18sp"
+                android:text="Neighborhood Leaderboard"
+                android:textSize="20sp"
                 android:textStyle="bold"
                 android:textColor="#212121"
                 android:layout_marginBottom="16dp"/>

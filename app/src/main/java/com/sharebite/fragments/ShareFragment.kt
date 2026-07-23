@@ -96,7 +96,18 @@ class ShareFragment : Fragment() {
             view.findViewById<TextView>(R.id.tagVegan),
             view.findViewById<TextView>(R.id.tagHalal)
         ).forEach { tag ->
-            tag.visibility = View.GONE
+            tag.setOnClickListener {
+                val isSelected = tag.tag as? Boolean ?: false
+                if (!isSelected) {
+                    tag.background = ContextCompat.getDrawable(requireContext(), R.drawable.bg_category_selected)
+                    tag.setTextColor(android.graphics.Color.WHITE)
+                    tag.tag = true
+                } else {
+                    tag.background = ContextCompat.getDrawable(requireContext(), R.drawable.bg_category_unselected)
+                    tag.setTextColor(android.graphics.Color.parseColor("#94A3B8"))
+                    tag.tag = false
+                }
+            }
         }
 
         btnShare.setOnClickListener {
@@ -107,6 +118,11 @@ class ShareFragment : Fragment() {
             val expiryHrs   = etExpiryHours.text.toString().trim().toLongOrNull() ?: 1L
             val expiryMins  = etExpiryMins.text.toString().trim().toLongOrNull() ?: 0L
             val isAnonymous = switchAnon.isChecked
+
+            val selectedTags = mutableListOf<String>()
+            if (view.findViewById<TextView>(R.id.tagDairyFree).tag == true) selectedTags.add("Dairy-free")
+            if (view.findViewById<TextView>(R.id.tagVegan).tag == true) selectedTags.add("Vegetarian")
+            if (view.findViewById<TextView>(R.id.tagHalal).tag == true) selectedTags.add("Halal")
 
             if (foodName.isEmpty()) {
                 etFoodName.error = "Required!"
@@ -125,7 +141,7 @@ class ShareFragment : Fragment() {
             }
 
             val currentUser = auth.currentUser
-            val userUid = if (isAnonymous) "" else (currentUser?.uid ?: "")
+            val userUid = currentUser?.uid ?: ""
 
             val expiryMillis = System.currentTimeMillis() +
                     (expiryHrs * 3_600_000L) +
@@ -139,7 +155,7 @@ class ShareFragment : Fragment() {
             fetchNameAndSave(
                 isAnonymous, currentUser, userUid,
                 foodName, quantity, description, location,
-                base64Image, expiryMillis, btnShare
+                base64Image, expiryMillis, selectedTags, btnShare
             )
         }
     }
@@ -175,11 +191,12 @@ class ShareFragment : Fragment() {
         location: String,
         imageData: String?,
         expiryMillis: Long,
+        dietaryTags: List<String>,
         btnShare: Button
     ) {
-        if (isAnonymous || currentUser == null) {
+        if (currentUser == null) {
             saveAndShare("Anonymous", userUid, foodName, quantity,
-                description, location, imageData, expiryMillis, btnShare)
+                description, location, imageData, expiryMillis, dietaryTags, isAnonymous, btnShare)
         } else {
             FirebaseDatabase
                 .getInstance("https://sharebite-7143d-default-rtdb.firebaseio.com")
@@ -191,13 +208,16 @@ class ShareFragment : Fragment() {
                         ?: currentUser.displayName
                         ?: currentUser.email?.substringBefore("@")
                         ?: "User"
-                    saveAndShare(realName, userUid, foodName, quantity,
-                        description, location, imageData, expiryMillis, btnShare)
+
+                    val displayName = if (isAnonymous) "Anonymous" else realName
+
+                    saveAndShare(displayName, userUid, foodName, quantity,
+                        description, location, imageData, expiryMillis, dietaryTags, isAnonymous, btnShare)
                 }
                 .addOnFailureListener {
-                    val fallbackName = currentUser.email?.substringBefore("@") ?: "User"
+                    val fallbackName = if (isAnonymous) "Anonymous" else (currentUser.email?.substringBefore("@") ?: "User")
                     saveAndShare(fallbackName, userUid, foodName, quantity,
-                        description, location, imageData, expiryMillis, btnShare)
+                        description, location, imageData, expiryMillis, dietaryTags, isAnonymous, btnShare)
                 }
         }
     }
@@ -211,6 +231,8 @@ class ShareFragment : Fragment() {
         location: String,
         imageData: String?,
         expiryMillis: Long,
+        dietaryTags: List<String>,
+        isAnonymous: Boolean,
         btnShare: Button
     ) {
         val newItem = FoodItem(
@@ -225,11 +247,27 @@ class ShareFragment : Fragment() {
             imageUri         = imageData,
             expiryTimeMillis = expiryMillis,
             isClaimed        = false,
-            claimedByUid     = ""
+            claimedByUid     = "",
+            dietaryTags      = dietaryTags,
+            isAnonymous      = isAnonymous
         )
 
         FoodDataStore.items.add(0, newItem)
         FoodDataStore.saveItem(newItem)
+
+        // ✅ Permanently increment donation count in /user_stats/{uid}/donations
+        // This persists even after food expires and gets deleted from /food_items
+        if (userUid.isNotEmpty()) {
+            val statsRef = FirebaseDatabase
+                .getInstance("https://sharebite-7143d-default-rtdb.firebaseio.com")
+                .getReference("user_stats")
+                .child(userUid)
+            statsRef.child("userName").setValue(displayName)
+            statsRef.child("donations").get().addOnSuccessListener { snap ->
+                val current = snap.getValue(Int::class.java) ?: 0
+                statsRef.child("donations").setValue(current + 1)
+            }
+        }
 
         if (!isAdded) return
         requireActivity().runOnUiThread {

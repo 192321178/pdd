@@ -33,6 +33,8 @@
         <activity android:name=".home.HomeActivity" />
         <activity android:name=".home.FoodDetailActivity"/>
         <activity android:name=".home.ChatActivity"/>
+        <activity android:name=".home.FeedbackActivity"/>
+        <activity android:name=".home.FoodHistoryActivity"/>
 
     </application>
 

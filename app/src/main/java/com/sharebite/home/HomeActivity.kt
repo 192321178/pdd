@@ -45,10 +45,10 @@ class HomeActivity : AppCompatActivity() {
         }
 
         FoodDataStore.startRealTimeListener { }
-        setupBellBadge()
+        setupBadge()
     }
 
-    private fun setupBellBadge() {
+    private fun setupBadge() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
         val userChatsDb = FirebaseDatabase
@@ -56,28 +56,47 @@ class HomeActivity : AppCompatActivity() {
             .getReference("user_chats")
             .child(uid)
 
+        val prefs = getSharedPreferences("chat_read_times", MODE_PRIVATE)
+
+        // ✅ Fix: On first login, seed all existing chats as "read" so old conversations
+        // don't show as unread. Check using a "seeded_{uid}" flag per user.
+        val seededKey = "seeded_$uid"
+        if (!prefs.getBoolean(seededKey, false)) {
+            userChatsDb.get().addOnSuccessListener { snapshot ->
+                val editor = prefs.edit()
+                for (child in snapshot.children) {
+                    val chatId = child.child("chatId").getValue(String::class.java) ?: child.key ?: continue
+                    // Only seed if not already set — marks all existing chats as read
+                    if (!prefs.contains("lastRead_$chatId")) {
+                        editor.putLong("lastRead_$chatId", System.currentTimeMillis())
+                    }
+                }
+                editor.putBoolean(seededKey, true)
+                editor.apply()
+            }
+        }
+
         userChatsDb.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val prefs    = getSharedPreferences("sharebite_prefs", MODE_PRIVATE)
-                val lastSeen = prefs.getLong("messages_last_seen", 0L)
-
                 var unreadCount = 0
                 for (child in snapshot.children) {
+                    val chatId    = child.child("chatId").getValue(String::class.java) ?: child.key ?: continue
                     val timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
                     val lastMsg   = child.child("lastMessage").getValue(String::class.java) ?: ""
-                    if (timestamp > lastSeen && lastMsg.isNotEmpty()) {
+                    // ✅ Per-chat lastRead — same key MessagesFragment writes on chat open
+                    val lastRead  = prefs.getLong("lastRead_${chatId}", 0L)
+                    if (timestamp > lastRead && lastMsg.isNotEmpty()) {
                         unreadCount++
                     }
                 }
 
-                val badge = binding.root.findViewById<TextView>(R.id.tvBadge)
-                if (badge != null) {
-                    if (unreadCount > 0) {
-                        badge.text       = if (unreadCount > 9) "9+" else unreadCount.toString()
-                        badge.visibility = View.VISIBLE
-                    } else {
-                        badge.visibility = View.GONE
-                    }
+                val badge = binding.bottomNav.getOrCreateBadge(R.id.messagesFragment)
+                if (unreadCount > 0) {
+                    badge.isVisible = true
+                    badge.number    = unreadCount
+                    badge.backgroundColor = getColor(android.R.color.holo_red_light)
+                } else {
+                    badge.isVisible = false
                 }
             }
             override fun onCancelled(error: DatabaseError) {}
