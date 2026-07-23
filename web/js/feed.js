@@ -15,6 +15,13 @@ export function initFeed() {
     });
     const searchInput = document.getElementById('search-input');
     searchInput?.addEventListener('input', () => loadFeed());
+
+    const homeMenuBtn = document.getElementById('home-hamburger-btn');
+    homeMenuBtn?.addEventListener('click', () => {
+        if (window.showGlobalHamburgerMenu) {
+            window.showGlobalHamburgerMenu();
+        }
+    });
 }
 
 export function loadFeed() {

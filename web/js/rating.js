@@ -1,7 +1,131 @@
 import { ref, get, set, update, onValue, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { auth, rtdb } from "./firebase-config.js";
 
-// ─── Hamburger Menu ─────────────────────────────────────────────────────────
+// ─── Global Hamburger Menu (Home Top Left) ──────────────────────────────────
+export function showGlobalHamburgerMenu() {
+    const user = auth.currentUser;
+    if (!user) return alert("Please login first!");
+
+    const myUid = user.uid;
+    const myName = user.displayName || user.email?.split('@')[0] || 'User';
+
+    const options = [
+        { text: "✅ Verify OTP", action: "verify_otp" },
+        { text: "⭐ Feedback & Reviews", action: "reviews" },
+        { text: "📋 Food History", action: "history" }
+    ];
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    overlay.style.zIndex = '9999';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-content-android';
+    modal.style.maxWidth = '320px';
+    modal.style.width = '90%';
+    modal.style.borderRadius = '16px';
+    modal.style.padding = '20px';
+
+    modal.innerHTML = `
+        <h3 style="margin-top:0;margin-bottom:16px;font-size:18px;color:#1A1A1A;">Menu</h3>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            ${options.map((opt, idx) => `
+                <button class="btn-menu-option" data-idx="${idx}" style="width:100%;text-align:left;padding:12px 16px;background:#F8F9FA;border:1px solid #E0E0E0;border-radius:10px;font-size:15px;font-weight:600;color:#333;cursor:pointer;">
+                    ${opt.text}
+                </button>
+            `).join('')}
+        </div>
+        <div style="text-align:right;margin-top:16px;">
+            <button class="btn-cancel-menu" style="background:none;border:none;color:#666;font-weight:700;cursor:pointer;padding:8px 12px;">CANCEL</button>
+        </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('.btn-cancel-menu').onclick = () => overlay.remove();
+
+    modal.querySelectorAll('.btn-menu-option').forEach(btn => {
+        btn.onclick = async () => {
+            const idx = parseInt(btn.dataset.idx);
+            const selected = options[idx];
+            overlay.remove();
+
+            if (selected.action === "verify_otp") {
+                // Find donor's active claimed items to verify
+                try {
+                    const snap = await get(ref(rtdb, 'food_items'));
+                    const claimedItems = [];
+                    if (snap.exists()) {
+                        snap.forEach(child => {
+                            const val = child.val();
+                            if (val.userUid === myUid && val.isClaimed) {
+                                claimedItems.push({ id: child.key, ...val });
+                            }
+                        });
+                    }
+
+                    if (claimedItems.length === 0) {
+                        return alert("No active claimed items found for your account to verify.");
+                    }
+
+                    if (claimedItems.length === 1) {
+                        showVerifyOtpModal(claimedItems[0], myUid, myName);
+                    } else {
+                        // Picker dialog if donor has multiple claimed items
+                        const itemPickerOverlay = document.createElement('div');
+                        itemPickerOverlay.className = 'modal-overlay';
+                        itemPickerOverlay.style.display = 'flex';
+                        itemPickerOverlay.style.zIndex = '9999';
+
+                        const itemPickerModal = document.createElement('div');
+                        itemPickerModal.className = 'modal-content-android';
+                        itemPickerModal.style.maxWidth = '320px';
+                        itemPickerModal.style.width = '90%';
+                        itemPickerModal.style.borderRadius = '16px';
+                        itemPickerModal.style.padding = '20px';
+
+                        itemPickerModal.innerHTML = `
+                            <h3 style="margin-top:0;margin-bottom:12px;font-size:16px;color:#1A1A1A;">Select Claimed Food Item:</h3>
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                                ${claimedItems.map((it, i) => `
+                                    <button class="btn-picker-item" data-i="${i}" style="width:100%;text-align:left;padding:10px 14px;background:#F0F4FF;border:1px solid #D0E0FF;border-radius:8px;font-size:14px;font-weight:600;color:#1A1A1A;cursor:pointer;">
+                                        🍛 ${it.foodName} (Claimed by ${it.claimerName || 'Claimer'})
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <div style="text-align:right;margin-top:14px;">
+                                <button class="btn-cancel-picker" style="background:none;border:none;color:#666;font-weight:700;cursor:pointer;padding:6px 10px;">CANCEL</button>
+                            </div>
+                        `;
+
+                        itemPickerOverlay.appendChild(itemPickerModal);
+                        document.body.appendChild(itemPickerOverlay);
+
+                        itemPickerOverlay.querySelector('.btn-cancel-picker').onclick = () => itemPickerOverlay.remove();
+                        itemPickerModal.querySelectorAll('.btn-picker-item').forEach(pBtn => {
+                            pBtn.onclick = () => {
+                                const selectedItem = claimedItems[parseInt(pBtn.dataset.i)];
+                                itemPickerOverlay.remove();
+                                showVerifyOtpModal(selectedItem, myUid, myName);
+                            };
+                        });
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            } else if (selected.action === "reviews") {
+                showReviewsScreen(myUid, myName);
+            } else if (selected.action === "history") {
+                showFoodHistoryScreen();
+            }
+        };
+    });
+}
+window.showGlobalHamburgerMenu = showGlobalHamburgerMenu;
+
+// ─── Hamburger Menu (Detail Screen) ─────────────────────────────────────────
 export function showHamburgerMenu(item, myUid, myName, donorUid, donorDisplay, chatId) {
     const isMyListing = myUid === item.userUid;
 
@@ -20,7 +144,7 @@ export function showHamburgerMenu(item, myUid, myName, donorUid, donorDisplay, c
 
     const modal = document.createElement('div');
     modal.className = 'modal-content-android';
-    modal.style.maxWidth = '320dp';
+    modal.style.maxWidth = '320px';
     modal.style.width = '90%';
     modal.style.borderRadius = '16px';
     modal.style.padding = '20px';
